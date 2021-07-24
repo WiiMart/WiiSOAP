@@ -16,4 +16,8 @@
     <!-- Set to true to enable response debugging.
     Can be extremely verbose. -->
     <Debug>true</Debug>
+    <!-- Set to true to ignore authentication checks.
+    This is useful when testing CAS directly.
+    It is only functional when debug is enabled. -->
+    <NoAuth>false</NoAuth>
 </Config>

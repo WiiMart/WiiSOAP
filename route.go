@@ -150,6 +150,10 @@ const (
 
 // checkAuthentication validates various factors from a given request requiring authentication.
 func checkAuthentication(e *Envelope) (bool, error) {
+	if ignoreAuth {
+		return true, nil
+	}
+
 	// Get necessary authentication identifiers.
 	deviceToken, err := getKey(e.doc, "DeviceToken")
 	if err != nil {

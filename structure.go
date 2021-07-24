@@ -40,6 +40,7 @@ type Config struct {
 	SQLDB      string `xml:"SQLDB"`
 
 	Debug bool `xml:"Debug"`
+	NoAuth bool `xml:"NoAuth"`
 }
 
 // Envelope represents the root element of any response, soapenv:Envelope.

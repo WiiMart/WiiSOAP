@@ -37,6 +37,7 @@ var baseUrl string
 var pool *pgxpool.Pool
 var ctx = context.Background()
 var isDebug = false
+var ignoreAuth = false
 
 // checkError makes error handling not as ugly and inefficient.
 func checkError(err error) {
@@ -58,6 +59,9 @@ func main() {
 
 	fmt.Println("[i] Initializing core...")
 	isDebug = readConfig.Debug
+	if isDebug {
+		ignoreAuth = readConfig.NoAuth
+	}
 
 	// Start SQL.
 	dbString := fmt.Sprintf("postgres://%s:%s@%s/%s", readConfig.SQLUser, readConfig.SQLPass, readConfig.SQLAddress, readConfig.SQLDB)
