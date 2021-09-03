@@ -206,8 +206,7 @@ func (e *Envelope) Error(errorCode int, reason string, err error) {
 	// Ensure all additional fields are empty to avoid conflict.
 	e.Body.Response.CustomFields = nil
 
-	e.AddKVNode("UserReason", reason)
-	e.AddKVNode("ServerReason", err.Error())
+	e.AddKVNode("ErrorMessage", fmt.Sprintf("%s: %v", reason, err))
 }
 
 // normalise parses a document, returning a document with only the request type's child nodes, stripped of prefix.

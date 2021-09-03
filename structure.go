@@ -39,7 +39,7 @@ type Config struct {
 	SQLPass    string `xml:"SQLPass"`
 	SQLDB      string `xml:"SQLDB"`
 
-	Debug bool `xml:"Debug"`
+	Debug  bool `xml:"Debug"`
 	NoAuth bool `xml:"NoAuth"`
 }
 
