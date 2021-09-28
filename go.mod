@@ -4,14 +4,14 @@ go 1.17
 
 require (
 	github.com/RiiConnect24/wiino v0.0.0-20210419165641-a2614cecbcca
-	github.com/antchfx/xmlquery v1.3.6
+	github.com/antchfx/xmlquery v1.3.7
 	github.com/jackc/pgconn v1.10.0
 	github.com/jackc/pgx/v4 v4.13.0
 	github.com/logrusorgru/aurora/v3 v3.0.0
 )
 
 require (
-	github.com/antchfx/xpath v1.1.10 // indirect
+	github.com/antchfx/xpath v1.2.0 // indirect
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
 	github.com/jackc/pgio v1.0.0 // indirect
