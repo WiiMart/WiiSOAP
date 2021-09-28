@@ -108,15 +108,21 @@ func purchaseTitle(e *Envelope) {
 }
 
 func listPurchaseHistory(e *Envelope) {
-	e.AddCustomType(Transactions{
-		TransactionId: "12345678",
-		Date:          e.Timestamp(),
-		Type:          "SERVICE",
-		TotalPaid:     "7",
-		Currency:      "POINTS",
-		ItemId:        "17",
-		ItemPricing:   "7",
-		Limits:        LimitStruct(DR),
+	e.AddCustomType([]Transactions{
+		{
+			TransactionId: "12345678",
+			Date:          e.Timestamp(),
+			Type:          "SERVICE",
+			TotalPaid:     "7",
+			Currency:      "POINTS",
+			ItemId:        "000100014843494A",
+			TitleId:       "000100014843494A",
+			ItemPricing: []Limits{
+				LimitStruct(DR),
+			},
+			ReferenceId:    1,
+			ReferenceValue: 19224,
+		},
 	})
 
 	e.AddKVNode("ListResultTotalSize", "1")

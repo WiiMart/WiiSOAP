@@ -133,8 +133,8 @@ func LimitStruct(kind LimitKinds) Limits {
 // Limits represents a common XML structure for transaction information.
 type Limits struct {
 	XMLName   xml.Name   `xml:"Limits"`
-	Limits    LimitKinds `xml:"Limits"`
-	LimitKind string     `xml:"LimitKind"`
+	Limits    LimitKinds `xml:"Limits,omitempty"`
+	LimitKind string     `xml:"LimitKind,omitempty"`
 }
 
 // Transactions represents a common XML structure.
@@ -146,12 +146,12 @@ type Transactions struct {
 	TotalPaid      string   `xml:"TotalPaid"`
 	Currency       string   `xml:"Currency"`
 	ItemId         string   `xml:"ItemId"`
-	ItemPricing    string   `xml:"ItemPricing"`
-	Limits         Limits   `xml:"Limits"`
+	// TODO: Is this correct? getComplex is called and then limits are queried
+	ItemPricing    []Limits `xml:"ItemPricing"`
 	TitleId        string   `xml:"TitleId,omitempty"`
 	ItemCode       int      `xml:"ItemCode,omitempty"`
 	ReferenceId    int      `xml:"ReferenceId,omitempty"`
-	ReferenceValue string   `xml:"ReferenceValue,omitempty"`
+	ReferenceValue int		`xml:"ReferenceValue,omitempty"`
 }
 
 // Tickets represents the format to inform a console of available titles for its consumption.
