@@ -11,31 +11,32 @@ func listItems(e *Envelope) {
 		TitleId: titleId,
 		Contents: ContentsMetadata{
 			TitleIncluded: false,
-			ContentIndex:  1,
+			ContentIndex:  0,
 		},
 		Attributes: []Attributes{
 			{
-				Name:  "MaxUserInodes",
-				Value: "10",
+				Name:  "TitleVersion",
+				Value: "0",
 			},
 			{
-				Name:  "itemComment",
-				Value: "Does not catch on fire.",
+				Name:  "Prices",
+				Value: "1",
 			},
 		},
 		Ratings: Ratings{
-			Name:   "Testing",
+			Name:   "E",
 			Rating: 1,
-			Age:    13,
+			Age:    9,
 		},
 		Prices: Prices{
 			ItemId: 0,
 			Price: Price{
-				Amount:   1,
+				Amount:   100,
 				Currency: "POINTS",
 			},
-			Limits:      LimitStruct(PR),
-			LicenseKind: "PERMANENT",
+			// Literally every Limit except for PR works
+			Limits:      LimitStruct(TR),
+			LicenseKind: "RENTAL",
 		},
 	})
 }
