@@ -139,19 +139,19 @@ type Limits struct {
 
 // Transactions represents a common XML structure.
 type Transactions struct {
-	XMLName        xml.Name `xml:"Transactions"`
-	TransactionId  string   `xml:"TransactionId"`
-	Date           string   `xml:"Date"`
-	Type           string   `xml:"Type"`
-	TotalPaid      string   `xml:"TotalPaid"`
-	Currency       string   `xml:"Currency"`
-	ItemId         string   `xml:"ItemId"`
+	XMLName       xml.Name `xml:"Transactions"`
+	TransactionId string   `xml:"TransactionId"`
+	Date          string   `xml:"Date"`
+	Type          string   `xml:"Type"`
+	TotalPaid     string   `xml:"TotalPaid"`
+	Currency      string   `xml:"Currency"`
+	ItemId        string   `xml:"ItemId"`
 	// TODO: Is this correct? getComplex is called and then limits are queried
 	ItemPricing    []Limits `xml:"ItemPricing"`
 	TitleId        string   `xml:"TitleId,omitempty"`
 	ItemCode       int      `xml:"ItemCode,omitempty"`
 	ReferenceId    int      `xml:"ReferenceId,omitempty"`
-	ReferenceValue int		`xml:"ReferenceValue,omitempty"`
+	ReferenceValue int      `xml:"ReferenceValue,omitempty"`
 }
 
 // Tickets represents the format to inform a console of available titles for its consumption.
