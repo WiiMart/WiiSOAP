@@ -1,16 +1,20 @@
 # WiiSOAP
-A SOAP Server, designed specifically to handle Wii Shop Channel SOAP. Slowly in development.
-> WiiSOAP is being rewritten in the future, therefore Pull Requests may be ignored.
+WiiSOAP is a server designed specifically to handle Wii Shop Channel SOAP - more specifically, that of the ECommerce library.
+Ideally, one day this will become feature complete enough to handle other titles utilizing EC, such as DLCs or other purchases.
 
-## What's the difference between this repo and that other SOAP repo?
-This is the SOAP Server Software. The other repository only has the communication templates between a Wii and WSC's server.
+It aims to implement everything necessary to provide title tickets, manage authentication, and everything between.
+
+> Note that this software is still in development. The schema ma
+
+## What's the difference between this repo and [that other SOAP repo](https://github.com/OpenShopChannel/Open-Shop-SOAP)?
+This is the SOAP Server Software. The other repository, [Open-Shop-SOAP](https://github.com/OpenShopChannel/Open-Shop-SOAP), holds templates of communication between a Wii and WSC's server.
 
 # Changelog
 Versions on this software are based on goals. (e.g 0.2 works towards SQL support. 0.3 works towards NUS support, etc.)
 
 ## 0.3.x Tanuki
 ### 0.3.0
-- Migrates to using PostgreSQL
+- Migrate to using PostgreSQL
 - Add routes and XML niceties
 - Implement most routes
 

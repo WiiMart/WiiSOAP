@@ -101,35 +101,6 @@ type Balance struct {
 	Currency string   `xml:"Currency"`
 }
 
-type LimitKinds int
-
-const (
-	// PR is presumably "purchased".
-	PR LimitKinds = 0
-	TR            = 1
-	DR            = 2
-	SR            = 3
-	LR            = 4
-	AT            = 10000
-)
-
-// LimitStruct returns a Limits struct filled for the given kind.
-func LimitStruct(kind LimitKinds) Limits {
-	names := map[LimitKinds]string{
-		PR: "PR",
-		TR: "TR",
-		DR: "DR",
-		SR: "SR",
-		LR: "LR",
-		AT: "AT",
-	}
-
-	return Limits{
-		Limits:    kind,
-		LimitKind: names[kind],
-	}
-}
-
 // Limits represents a common XML structure for transaction information.
 type Limits struct {
 	XMLName   xml.Name   `xml:"Limits"`

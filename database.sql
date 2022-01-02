@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 13.2
--- Dumped by pg_dump version 13.2
+-- Dumped from database version 14.1
+-- Dumped by pg_dump version 14.1
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -64,21 +64,11 @@ CREATE TABLE public.userbase (
                                  device_token_hashed character varying(32) NOT NULL,
                                  account_id integer NOT NULL,
                                  region character varying(3),
-                                 country character varying(2),
-                                 language character varying(2),
-                                 serial_number character varying(11),
-                                 device_code bigint
+                                 serial_number character varying(11)
 );
 
 
 ALTER TABLE public.userbase OWNER TO wiisoap;
-
---
--- Name: COLUMN userbase.device_code; Type: COMMENT; Schema: public; Owner: wiisoap
---
-
-COMMENT ON COLUMN public.userbase.device_code IS 'Also known as the console''s friend code.';
-
 
 --
 -- Name: owned_titles owned_titles_pk; Type: CONSTRAINT; Schema: public; Owner: wiisoap
@@ -126,10 +116,10 @@ CREATE UNIQUE INDEX userbase_account_id_uindex ON public.userbase USING btree (a
 
 
 --
--- Name: userbase_device_code_uindex; Type: INDEX; Schema: public; Owner: wiisoap
+-- Name: userbase_device_id_uindex; Type: INDEX; Schema: public; Owner: wiisoap
 --
 
-CREATE UNIQUE INDEX userbase_device_code_uindex ON public.userbase USING btree (device_code);
+CREATE UNIQUE INDEX userbase_device_id_uindex ON public.userbase USING btree (device_id);
 
 
 --

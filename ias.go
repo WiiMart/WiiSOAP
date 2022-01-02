@@ -23,25 +23,55 @@ import (
 	"fmt"
 	wiino "github.com/RiiConnect24/wiino/golang"
 	"github.com/jackc/pgconn"
+	"github.com/jackc/pgx/v4"
 	"log"
 	"math/rand"
 	"strconv"
 )
 
 const (
-	PrepareUserStatement = `INSERT INTO userbase (device_id, device_token, device_token_hashed, account_id, region, country, language, serial_number, device_code)  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
-	SyncUserStatement    = `SELECT account_id, device_code, device_token FROM userbase WHERE language = $1 AND country = $2 AND region = $3 AND device_id = $4`
+	PrepareUserStatement = `INSERT INTO userbase
+		(device_id, device_token, device_token_hashed, account_id, region, serial_number) 
+	VALUES ($1, $2, $3, $4, $5, $6)`
+	SyncUserStatement = `SELECT 
+		account_id, device_token 
+	FROM userbase WHERE 
+		region = $1 AND
+		device_id = $2`
+	CheckUserStatement = `SELECT
+		1
+	FROM userbase WHERE
+		device_id = $1 AND
+		serial_number = $2 AND
+		region = $3`
 )
 
 func checkRegistration(e *Envelope) {
 	serialNo, err := getKey(e.doc, "SerialNumber")
 	if err != nil {
-		e.Error(5, "not good enough for me. ;3", err)
+		e.Error(5, "missing serial number", err)
 		return
 	}
 
+	// We'll utilize our sync user statement.
+	query := pool.QueryRow(ctx, CheckUserStatement, e.DeviceId(), serialNo, e.Region())
+	err = query.Scan(nil)
+
+	// Formulate our response
 	e.AddKVNode("OriginalSerialNumber", serialNo)
-	e.AddKVNode("DeviceStatus", "R")
+
+	if err != nil {
+		// We're either unregistered, or a database error occurred.
+		if err == pgx.ErrNoRows {
+			e.AddKVNode("DeviceStatus", DeviceStatusUnregistered)
+		} else {
+			log.Printf("error executing statement: %v\n", err)
+			e.Error(5, "server-side error", err)
+		}
+	} else {
+		// No errors! We're safe.
+		e.AddKVNode("DeviceStatus", DeviceStatusRegistered)
+	}
 }
 
 func getChallenge(e *Envelope) {
@@ -64,11 +94,10 @@ func getRegistrationInfo(e *Envelope) {
 
 func syncRegistration(e *Envelope) {
 	var accountId int64
-	var deviceCode int
 	var deviceToken string
 
-	user := pool.QueryRow(ctx, SyncUserStatement, e.Language(), e.Country(), e.Region(), e.DeviceId())
-	err := user.Scan(&accountId, &deviceCode, &deviceToken)
+	user := pool.QueryRow(ctx, SyncUserStatement, e.Region(), e.DeviceId())
+	err := user.Scan(&accountId, &deviceToken)
 	if err != nil {
 		e.Error(7, "An error occurred querying the database.", err)
 	}
@@ -82,37 +111,36 @@ func syncRegistration(e *Envelope) {
 }
 
 func register(e *Envelope) {
-	reason := "disgustingly invalid. ;3"
 	deviceCode, err := getKey(e.doc, "DeviceCode")
 	if err != nil {
-		e.Error(7, reason, err)
+		e.Error(7, "missing device code", err)
 		return
 	}
 
 	registerRegion, err := getKey(e.doc, "RegisterRegion")
 	if err != nil {
-		e.Error(7, reason, err)
+		e.Error(7, "missing registration region", err)
 		return
 	}
 	if registerRegion != e.Region() {
-		e.Error(7, reason, errors.New("region does not match registration region"))
+		e.Error(7, "mismatched region", errors.New("region does not match registration region"))
 		return
 	}
 
 	serialNo, err := getKey(e.doc, "SerialNumber")
 	if err != nil {
-		e.Error(7, reason, err)
+		e.Error(7, "missing serial number", err)
 		return
 	}
 
 	// Validate given friend code.
 	userId, err := strconv.ParseUint(deviceCode, 10, 64)
 	if err != nil {
-		e.Error(7, reason, err)
+		e.Error(7, "invalid friend code", err)
 		return
 	}
 	if wiino.NWC24CheckUserID(userId) != 0 {
-		e.Error(7, reason, err)
+		e.Error(7, "invalid friend code", err)
 		return
 	}
 
@@ -124,18 +152,18 @@ func register(e *Envelope) {
 	// ...and then its md5, because the Wii sends this for most requests.
 	md5DeviceToken := fmt.Sprintf("%x", md5.Sum([]byte(deviceToken)))
 
-	// Insert all of our obtained values to the database..
-	_, err = pool.Exec(ctx, PrepareUserStatement, e.DeviceId(), deviceToken, md5DeviceToken, accountId, e.Region(), e.Country(), e.Language(), serialNo, deviceCode)
+	// Insert all of our obtained values to the database...
+	_, err = pool.Exec(ctx, PrepareUserStatement, e.DeviceId(), deviceToken, md5DeviceToken, accountId, e.Region(), serialNo)
 	if err != nil {
 		// It's okay if this isn't a PostgreSQL error, as perhaps other issues have come in.
 		if driverErr, ok := err.(*pgconn.PgError); ok {
 			if driverErr.Code == "23505" {
-				e.Error(7, reason, errors.New("user already exists"))
+				e.Error(7, "database error", errors.New("user already exists"))
 				return
 			}
 		}
 		log.Printf("error executing statement: %v\n", err)
-		e.Error(7, reason, errors.New("failed to execute db operation"))
+		e.Error(7, "database error", errors.New("failed to execute db operation"))
 		return
 	}
 
