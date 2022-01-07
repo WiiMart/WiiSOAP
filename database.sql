@@ -28,31 +28,24 @@ CREATE TABLE public.owned_titles (
                                      account_id integer NOT NULL,
                                      ticket_id character varying(16) NOT NULL,
                                      title_id character varying(16) NOT NULL,
-                                     revocation_date timestamp without time zone
+                                     version integer
 );
 
 
 ALTER TABLE public.owned_titles OWNER TO wiisoap;
 
 --
--- Name: shop_titles; Type: TABLE; Schema: public; Owner: wiisoap
+-- Name: tickets; Type: TABLE; Schema: public; Owner: wiisoap
 --
 
-CREATE TABLE public.shop_titles (
-                                    title_id character varying(16) NOT NULL,
-                                    version integer,
-                                    description text
+CREATE TABLE public.tickets (
+                                title_id character varying NOT NULL,
+                                ticket bytea,
+                                version integer
 );
 
 
-ALTER TABLE public.shop_titles OWNER TO wiisoap;
-
---
--- Name: COLUMN shop_titles.description; Type: COMMENT; Schema: public; Owner: wiisoap
---
-
-COMMENT ON COLUMN public.shop_titles.description IS 'Description of the title.';
-
+ALTER TABLE public.tickets OWNER TO wiisoap;
 
 --
 -- Name: userbase; Type: TABLE; Schema: public; Owner: wiisoap
@@ -79,11 +72,11 @@ ALTER TABLE ONLY public.owned_titles
 
 
 --
--- Name: shop_titles shop_titles_pk; Type: CONSTRAINT; Schema: public; Owner: wiisoap
+-- Name: tickets tickets_pk; Type: CONSTRAINT; Schema: public; Owner: wiisoap
 --
 
-ALTER TABLE ONLY public.shop_titles
-    ADD CONSTRAINT shop_titles_pk PRIMARY KEY (title_id);
+ALTER TABLE ONLY public.tickets
+    ADD CONSTRAINT tickets_pk PRIMARY KEY (title_id);
 
 
 --
@@ -99,13 +92,6 @@ ALTER TABLE ONLY public.userbase
 --
 
 CREATE UNIQUE INDEX owned_titles_account_id_uindex ON public.owned_titles USING btree (account_id);
-
-
---
--- Name: shop_titles_title_id_uindex; Type: INDEX; Schema: public; Owner: wiisoap
---
-
-CREATE UNIQUE INDEX shop_titles_title_id_uindex ON public.shop_titles USING btree (title_id);
 
 
 --
@@ -127,15 +113,6 @@ CREATE UNIQUE INDEX userbase_device_id_uindex ON public.userbase USING btree (de
 --
 
 CREATE UNIQUE INDEX userbase_device_token_uindex ON public.userbase USING btree (device_token);
-
-
---
--- Name: owned_titles match_shop_title_metadata; Type: FK CONSTRAINT; Schema: public; Owner: wiisoap
---
-
-ALTER TABLE ONLY public.owned_titles
-    ADD CONSTRAINT match_shop_title_metadata FOREIGN KEY (title_id) REFERENCES public.shop_titles(title_id);
-
 
 --
 -- Name: owned_titles order_account_ids; Type: FK CONSTRAINT; Schema: public; Owner: wiisoap
