@@ -18,14 +18,16 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"log"
 )
 
 const (
-	QueryOwnedTitles = `SELECT o.ticket_id, o.title_id, s.version, o.revocation_date
-		FROM owned_titles o
-		JOIN shop_titles s on s.title_id = o.title_id
-		AND o.account_id = $1`
+	QueryOwnedTitles = `SELECT owned_titles.title_id, tickets.version
+		FROM owned_titles, tickets
+		WHERE owned_titles.title_id = tickets.title_id
+		AND owned_titles.account_id = $1`
 )
 
 func checkDeviceStatus(e *Envelope) {
@@ -45,36 +47,36 @@ func notifyETicketsSynced(e *Envelope) {
 func listETickets(e *Envelope) {
 	accountId, err := e.AccountId()
 	if err != nil {
-		e.Error(2, "that's all you've got for me? ;3", err)
+		e.Error(2, "missing account ID", err)
 		return
 	}
 
 	rows, err := pool.Query(ctx, QueryOwnedTitles, accountId)
 	if err != nil {
-		e.Error(2, "that's all you've got for me? ;3", err)
+		log.Printf("error executing statement: %v\n", err)
+		e.Error(2, "database error", errors.New("failed to execute db operation"))
 		return
 	}
 
 	// Add all available titles for this account.
 	defer rows.Close()
 	for rows.Next() {
-		var ticketId string
 		var titleId string
 		var version int
-		var revocationDate int
-		err = rows.Scan(&ticketId, &titleId, &version, &revocationDate)
+		err = rows.Scan(&titleId, &version)
 		if err != nil {
-			e.Error(2, "that's all you've got for me? ;3", err)
+			log.Printf("error executing statement: %v\n", err)
+			e.Error(2, "database error", errors.New("failed to execute db operation"))
 			return
 		}
 
 		e.AddCustomType(Tickets{
-			TicketId:   ticketId,
-			TitleId:    titleId,
-			Version:    version,
-			RevokeDate: revocationDate,
+			TitleId: titleId,
+			Version: version,
 
-			// We do not support migration.
+			// We do not support migration, ticket IDs, or revocation.
+			TicketId:     "0",
+			RevokeDate:   0,
 			MigrateCount: 0,
 			MigrateLimit: 0,
 		})

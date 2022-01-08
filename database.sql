@@ -26,7 +26,6 @@ SET default_table_access_method = heap;
 
 CREATE TABLE public.owned_titles (
                                      account_id integer NOT NULL,
-                                     ticket_id character varying(16) NOT NULL,
                                      title_id character varying(16) NOT NULL,
                                      version integer
 );
