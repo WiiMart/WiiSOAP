@@ -114,9 +114,9 @@ type Transactions struct {
 	TransactionId string   `xml:"TransactionId"`
 	Date          string   `xml:"Date"`
 	Type          string   `xml:"Type"`
-	TotalPaid     string   `xml:"TotalPaid"`
+	TotalPaid     int      `xml:"TotalPaid"`
 	Currency      string   `xml:"Currency"`
-	ItemId        string   `xml:"ItemId"`
+	ItemId        int      `xml:"ItemId"`
 	// TODO: Is this correct? getComplex is called and then limits are queried
 	ItemPricing    []Limits `xml:"ItemPricing"`
 	TitleId        string   `xml:"TitleId,omitempty"`

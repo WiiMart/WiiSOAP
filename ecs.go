@@ -20,6 +20,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"github.com/wii-tools/wadlib"
 	"log"
 )
 
@@ -28,13 +29,26 @@ const (
 		FROM owned_titles, tickets
 		WHERE owned_titles.title_id = tickets.title_id
 		AND owned_titles.account_id = $1`
+
+	QueryTicketStatement = `SELECT ticket, version FROM tickets WHERE title_id = $1`
+
+	AssociateTicketStatement = `INSERT INTO owned_titles (account_id, title_id, version)
+		VALUES ($1, $2, $3)`
+
+	// SharedBalanceAmount describes the maximum signed 32-bit integer value.
+	// It is not an actual tracked points value, but exists to permit reuse.
+	SharedBalanceAmount = 2147483647
 )
 
-func checkDeviceStatus(e *Envelope) {
-	e.AddCustomType(Balance{
-		Amount:   2147483647,
+func getBalance() Balance {
+	return Balance{
+		Amount:   SharedBalanceAmount,
 		Currency: "POINTS",
-	})
+	}
+}
+
+func checkDeviceStatus(e *Envelope) {
+	e.AddCustomType(getBalance())
 	e.AddKVNode("ForceSyncTime", "0")
 	e.AddKVNode("ExtTicketTime", e.Timestamp())
 	e.AddKVNode("SyncTime", e.Timestamp())
@@ -94,19 +108,62 @@ func getETickets(e *Envelope) {
 }
 
 func purchaseTitle(e *Envelope) {
-	e.AddCustomType(Balance{
-		Amount:   2018,
-		Currency: "POINTS",
-	})
+	//accountId, err := e.AccountId()
+	//if err != nil {
+	//	e.Error(2, "missing account ID", err)
+	//	return
+	//}
+
+	// Determine the title ID we're going to purchase.
+	titleId, err := e.getKey("TitleId")
+	if err != nil {
+		e.Error(2, "missing account ID", err)
+		return
+	}
+
+	// Query the ticket and current version for this title.
+	var ticket []byte
+	var version int
+	row := pool.QueryRow(ctx, QueryTicketStatement, titleId)
+
+	err = row.Scan(&ticket, &version)
+	if err != nil {
+		log.Printf("unexpected error purchasing: %v", err)
+		// TODO(spotlightishere): Can we more elegantly return an error when a title may not exist here?
+		e.Error(2, "error purchasing", nil)
+	}
+
+	// Associate the given title ID with the user.
+	//_, err = pool.Exec(ctx, AssociateTicketStatement, accountId, titleId, version)
+	//if err != nil {
+	//	log.Printf("unexpected error purchasing: %v", err)
+	//	e.Error(2, "error purchasing", nil)
+	//}
+
+	// The returned ticket is expected to have two other certificates associated.
+	ticketString := b64(append(ticket, wadlib.CertChainTemplate...))
+
+	e.AddCustomType(getBalance())
 	e.AddCustomType(Transactions{
 		TransactionId: "00000000",
 		Date:          e.Timestamp(),
 		Type:          "PURCHGAME",
+		TotalPaid:     0,
+		Currency:      "POINTS",
+		ItemId:        0,
 	})
 	e.AddKVNode("SyncTime", e.Timestamp())
-	e.AddKVNode("Certs", "00000000")
-	e.AddKVNode("TitleId", "00000000")
-	e.AddKVNode("ETickets", "00000000")
+
+	//// Two cert types must be present.
+	//type Certs struct {
+	//	XMLName xml.Name `xml:"Certs"`
+	//	Value   string   `xml:",chardata"`
+	//}
+
+	e.AddKVNode("ETickets", ticketString)
+	e.AddKVNode("Certs", b64(wadlib.CertChainTemplate))
+	e.AddKVNode("Certs", b64(wadlib.CertChainTemplate))
+	e.AddKVNode("TitleId", titleId)
 }
 
 func listPurchaseHistory(e *Envelope) {
@@ -115,9 +172,9 @@ func listPurchaseHistory(e *Envelope) {
 			TransactionId: "12345678",
 			Date:          e.Timestamp(),
 			Type:          "SERVICE",
-			TotalPaid:     "7",
+			TotalPaid:     7,
 			Currency:      "POINTS",
-			ItemId:        "000100014843494A",
+			ItemId:        0,
 			TitleId:       "000100014843494A",
 			ItemPricing: []Limits{
 				LimitStruct(DR),

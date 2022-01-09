@@ -18,6 +18,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/xml"
 	"errors"
 	"fmt"

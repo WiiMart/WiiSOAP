@@ -38,7 +38,7 @@ ALTER TABLE public.owned_titles OWNER TO wiisoap;
 --
 
 CREATE TABLE public.tickets (
-                                title_id character varying NOT NULL,
+                                title_id character varying(16) NOT NULL,
                                 ticket bytea,
                                 version integer
 );
