@@ -47,7 +47,7 @@ const (
 )
 
 func checkRegistration(e *Envelope) {
-	serialNo, err := getKey(e.doc, "SerialNumber")
+	serialNo, err := e.getKey("SerialNumber")
 	if err != nil {
 		e.Error(5, "missing serial number", err)
 		return
@@ -111,13 +111,13 @@ func syncRegistration(e *Envelope) {
 }
 
 func register(e *Envelope) {
-	deviceCode, err := getKey(e.doc, "DeviceCode")
+	deviceCode, err := e.getKey("DeviceCode")
 	if err != nil {
 		e.Error(7, "missing device code", err)
 		return
 	}
 
-	registerRegion, err := getKey(e.doc, "RegisterRegion")
+	registerRegion, err := e.getKey("RegisterRegion")
 	if err != nil {
 		e.Error(7, "missing registration region", err)
 		return
@@ -127,7 +127,7 @@ func register(e *Envelope) {
 		return
 	}
 
-	serialNo, err := getKey(e.doc, "SerialNumber")
+	serialNo, err := e.getKey("SerialNumber")
 	if err != nil {
 		e.Error(7, "missing serial number", err)
 		return

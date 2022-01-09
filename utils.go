@@ -113,7 +113,7 @@ func (e *Envelope) Language() string {
 // If for whatever reason AccountId is not present (such as in SyncRegistration),
 // it will return an error. Please design in a way so that this is not an issue.
 func (e *Envelope) AccountId() (int64, error) {
-	accountId, err := getKey(e.doc, "AccountId")
+	accountId, err := e.getKey("AccountId")
 	if err != nil {
 		return 0, nil
 	}
@@ -124,14 +124,13 @@ func (e *Envelope) AccountId() (int64, error) {
 // ObtainCommon interprets a given node, and updates the envelope with common key values.
 func (e *Envelope) ObtainCommon() error {
 	var err error
-	doc := e.doc
 
 	// These fields are common across all requests.
-	e.Body.Response.Version, err = getKey(doc, "Version")
+	e.Body.Response.Version, err = e.getKey("Version")
 	if err != nil {
 		return err
 	}
-	deviceIdString, err := getKey(doc, "DeviceId")
+	deviceIdString, err := e.getKey("DeviceId")
 	if err != nil {
 		return err
 	}
@@ -139,21 +138,21 @@ func (e *Envelope) ObtainCommon() error {
 	if err != nil {
 		return err
 	}
-	e.Body.Response.MessageId, err = getKey(doc, "MessageId")
+	e.Body.Response.MessageId, err = e.getKey("MessageId")
 	if err != nil {
 		return err
 	}
 
 	// These are as well, but we do not need to send them back in our response.
-	e.region, err = getKey(doc, "Region")
+	e.region, err = e.getKey("Region")
 	if err != nil {
 		return err
 	}
-	e.country, err = getKey(doc, "Country")
+	e.country, err = e.getKey("Country")
 	if err != nil {
 		return err
 	}
-	e.language, err = getKey(doc, "Language")
+	e.language, err = e.getKey("Language")
 	if err != nil {
 		return err
 	}
@@ -237,8 +236,8 @@ func stripNamespace(node *xmlquery.Node) {
 }
 
 // getKey returns the value for a child key from a node, if documented.
-func getKey(doc *xmlquery.Node, key string) (string, error) {
-	node := xmlquery.FindOne(doc, "//"+key)
+func (e *Envelope) getKey(key string) (string, error) {
+	node := xmlquery.FindOne(e.doc, "//"+key)
 
 	if node == nil {
 		return "", errors.New("missing mandatory key named " + key)
@@ -250,6 +249,7 @@ func getKey(doc *xmlquery.Node, key string) (string, error) {
 // Derived from https://stackoverflow.com/a/31832326, adding numbers
 const letterBytes = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
+// RandString generates a random string with n length.
 func RandString(n int) string {
 	b := make([]byte, n)
 	for i := range b {
@@ -258,10 +258,16 @@ func RandString(n int) string {
 	return string(b)
 }
 
+// debugPrint logs a message only if this program is running in debug mode.
 func debugPrint(v ...interface{}) {
 	if !isDebug {
 		return
 	}
 
 	log.Print(v...)
+}
+
+// b64 returns a base64-encoded string of the given bytes.
+func b64(b []byte) string {
+	return base64.StdEncoding.EncodeToString(b)
 }

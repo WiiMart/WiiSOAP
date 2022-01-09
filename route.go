@@ -156,7 +156,7 @@ func checkAuthentication(e *Envelope) (bool, error) {
 	}
 
 	// Get necessary authentication identifiers.
-	deviceToken, err := getKey(e.doc, "DeviceToken")
+	deviceToken, err := e.getKey("DeviceToken")
 	if err != nil {
 		return false, err
 	}

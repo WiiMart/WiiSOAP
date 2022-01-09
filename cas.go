@@ -1,7 +1,7 @@
 package main
 
 func listItems(e *Envelope) {
-	titleId, err := getKey(e.doc, "TitleId")
+	titleId, err := e.getKey("TitleId")
 	if err != nil {
 		e.Error(9, "Unable to obtain title.", err)
 	}
