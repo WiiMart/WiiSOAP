@@ -42,3 +42,13 @@ const (
 	DeviceStatusRegistered   = "R"
 	DeviceStatusUnregistered = "U"
 )
+
+// TokenType represents a way to distinguish between ST- (unhashed)
+// and WT- (hashed) device tokens.
+type TokenType int
+
+const (
+	TokenTypeUnhashed = iota
+	TokenTypeHashed
+	TokenTypeInvalid
+)

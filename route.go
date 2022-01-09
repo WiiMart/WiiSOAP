@@ -145,7 +145,8 @@ func (route *Route) Handle() http.Handler {
 }
 
 const (
-	RouteVerifyStatement = `SELECT device_id FROM userbase WHERE device_token_hashed=$1 AND account_id=$2 AND device_id=$3`
+	RouteVerifyHashedStatement   = `SELECT 1 FROM userbase WHERE device_token_hashed=$1 AND account_id=$2 AND device_id=$3`
+	RouteVerifyUnhashedStatement = `SELECT 1 FROM userbase WHERE device_token=$1 AND account_id=$2 AND device_id=$3`
 )
 
 // checkAuthentication validates various factors from a given request requiring authentication.
@@ -164,13 +165,20 @@ func checkAuthentication(e *Envelope) (bool, error) {
 		return false, err
 	}
 
-	hash := validateTokenFormat(deviceToken)
-	if hash == "" {
+	hash, tokenType := determineTokenFormat(deviceToken)
+	if hash == "" || tokenType == TokenTypeInvalid {
 		return false, nil
 	}
 
+	var statement string
+	if tokenType == TokenTypeHashed {
+		statement = RouteVerifyHashedStatement
+	} else if tokenType == TokenTypeUnhashed {
+		statement = RouteVerifyUnhashedStatement
+	}
+
 	// Check using various input given.
-	row := pool.QueryRow(ctx, RouteVerifyStatement, hash, accountId, e.DeviceId())
+	row := pool.QueryRow(ctx, statement, hash, accountId, e.DeviceId())
 
 	var throwaway int
 	err = row.Scan(&throwaway)
@@ -185,18 +193,30 @@ func checkAuthentication(e *Envelope) (bool, error) {
 	}
 }
 
-// validateTokenFormat confirms the prefix and size of tokens,
-// in a format such as WT-5d41402abc4b2a76b9719d911017c592.
-// It returns an empty string on failure.
-func validateTokenFormat(token string) string {
-	success := len(token) == 35 && token[:3] == "WT-"
-
-	if success {
-		// Strips the WT- prefix off.
-		return token[3:35]
-	} else {
-		return ""
+// validateTokenFormat confirms the prefix, size and type of tokens,
+// which are expected to be in a format such as
+// WT-5d41402abc4b2a76b9719d911017c592 or ST-aech1kae4sheequ8Zohwa.
+// It returns an empty string on failure, alongside TokenTypeInvalid.
+func determineTokenFormat(token string) (string, TokenType) {
+	tokenLen := len(token)
+	if tokenLen < 3 {
+		return "", TokenTypeInvalid
 	}
+
+	switch token[:3] {
+	case "ST-":
+		// Unhashed tokens are 24 characters in length.
+		if tokenLen == 24 {
+			return token[3:24], TokenTypeUnhashed
+		}
+	case "WT-":
+		// Hashed tokens are 45 characters in length.
+		if tokenLen == 45 {
+			return token[3:45], TokenTypeHashed
+		}
+	}
+
+	return "", TokenTypeInvalid
 }
 
 func printError(w http.ResponseWriter, reason string) {
