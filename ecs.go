@@ -154,13 +154,8 @@ func purchaseTitle(e *Envelope) {
 	})
 	e.AddKVNode("SyncTime", e.Timestamp())
 
-	//// Two cert types must be present.
-	//type Certs struct {
-	//	XMLName xml.Name `xml:"Certs"`
-	//	Value   string   `xml:",chardata"`
-	//}
-
 	e.AddKVNode("ETickets", ticketString)
+	// Two cert types must be present.
 	e.AddKVNode("Certs", b64(wadlib.CertChainTemplate))
 	e.AddKVNode("Certs", b64(wadlib.CertChainTemplate))
 	e.AddKVNode("TitleId", titleId)

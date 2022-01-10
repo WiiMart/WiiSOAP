@@ -19,11 +19,15 @@ package main
 
 import (
 	"context"
+	crypto "crypto/rand"
 	"encoding/xml"
 	"fmt"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"io/ioutil"
 	"log"
+	"math"
+	"math/big"
+	"math/rand"
 	"net/http"
 )
 
@@ -47,10 +51,15 @@ func checkError(err error) {
 }
 
 func main() {
+	// Seed our random number generator before anything else.
+	seed, err := crypto.Int(crypto.Reader, big.NewInt(math.MaxInt64))
+	checkError(err)
+	rand.Seed(seed.Int64())
+
 	// Initial Start.
 	fmt.Println("WiiSOAP 0.2.6 Kawauso\n[i] Reading the Config...")
 
-	// Check the Config.
+	// Check the config.
 	ioconfig, err := ioutil.ReadFile("./config.xml")
 	checkError(err)
 	readConfig := Config{}
