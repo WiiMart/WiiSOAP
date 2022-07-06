@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"github.com/wii-tools/wadlib"
 	"log"
+	"strings"
 )
 
 const (
@@ -121,6 +122,9 @@ func purchaseTitle(e *Envelope) {
 		return
 	}
 
+	// We store title IDs in lowercase.
+	titleId = strings.ToLower(titleId)
+
 	// Query the ticket and current version for this title.
 	var ticket []byte
 	var version int
@@ -131,6 +135,7 @@ func purchaseTitle(e *Envelope) {
 		log.Printf("unexpected error purchasing: %v", err)
 		// TODO(spotlightishere): Can we more elegantly return an error when a title may not exist here?
 		e.Error(2, "error purchasing", nil)
+		return
 	}
 
 	// Associate the given title ID with the user.
