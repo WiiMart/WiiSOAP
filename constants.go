@@ -13,6 +13,18 @@ const (
 	AT            = 10000
 )
 
+// LicenceKinds represents the various rights a user has to a title.
+type LicenceKinds string
+
+const (
+	PERMANENT LicenceKinds = "PERMANENT"
+	DEMO      LicenceKinds = "DEMO"
+	TRIAL     LicenceKinds = "TRIAL"
+	RENTAL    LicenceKinds = "RENTAL"
+	SUBSCRIPT LicenceKinds = "SUBSCRIPT"
+	SERVICE   LicenceKinds = "SERVICE"
+)
+
 // LimitStruct returns a Limits struct filled for the given kind.
 func LimitStruct(kind LimitKinds) Limits {
 	names := map[LimitKinds]string{

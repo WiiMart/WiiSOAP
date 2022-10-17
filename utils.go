@@ -35,7 +35,7 @@ import (
 var namespaceParse = regexp.MustCompile(`^urn:(.{3})\.wsapi\.broadon\.com/(.*)$`)
 
 // parseAction interprets contents along the lines of "urn:ecs.wsapi.broadon.com/CheckDeviceStatus",
-//where "CheckDeviceStatus" is the action to be performed.
+// where "CheckDeviceStatus" is the action to be performed.
 func parseAction(original string) (string, string) {
 	// Intended to return the original string, the service's name and the name of the action.
 	matches := namespaceParse.FindStringSubmatch(original)

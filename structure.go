@@ -104,7 +104,7 @@ type Balance struct {
 // Limits represents a common XML structure for transaction information.
 type Limits struct {
 	XMLName   xml.Name   `xml:"Limits"`
-	Limits    LimitKinds `xml:"Limits,omitempty"`
+	Limits    LimitKinds `xml:"Limits"`
 	LimitKind string     `xml:"LimitKind,omitempty"`
 }
 
@@ -161,8 +161,8 @@ type Price struct {
 type Prices struct {
 	ItemId      int `xml:"ItemId"`
 	Price       Price
-	Limits      Limits `xml:"Limits"`
-	LicenseKind string `xml:"LicenseKind"`
+	Limits      Limits       `xml:"Limits"`
+	LicenseKind LicenceKinds `xml:"LicenseKind"`
 }
 
 // Items allows specifying an overview of a title's contents.
@@ -181,4 +181,5 @@ type Ratings struct {
 	Name    string   `xml:"Name"`
 	Rating  int      `xml:"Rating"`
 	Age     int      `xml:"Age"`
+	// There is also a `Descriptors` field
 }

@@ -31,12 +31,12 @@ func listItems(e *Envelope) {
 		Prices: Prices{
 			ItemId: 0,
 			Price: Price{
-				Amount:   100,
+				// Not sure about WSC, but must match the price for the title you are purchasing in Wii no Ma.
+				Amount:   0,
 				Currency: "POINTS",
 			},
-			// Literally every Limit except for PR works
-			Limits:      LimitStruct(TR),
-			LicenseKind: "RENTAL",
+			Limits:      LimitStruct(DR),
+			LicenseKind: RENTAL,
 		},
 	})
 }
