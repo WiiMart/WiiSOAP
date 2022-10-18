@@ -1,5 +1,7 @@
 package main
 
+import "errors"
+
 // LimitKinds represents various limits applied to the current ticket.
 type LimitKinds int
 
@@ -24,6 +26,23 @@ const (
 	SUBSCRIPT LicenceKinds = "SUBSCRIPT"
 	SERVICE   LicenceKinds = "SERVICE"
 )
+
+func GetLicenceKind(kind string) (*LicenceKinds, error) {
+	names := map[string]LicenceKinds{
+		"PERMANENT": PERMANENT,
+		"DEMO":      DEMO,
+		"TRIAL":     TRIAL,
+		"RENTAL":    RENTAL,
+		"SUBSCRIPT": SUBSCRIPT,
+		"SERVICE":   SERVICE,
+	}
+
+	if value, exists := names[kind]; exists {
+		return &value, nil
+	} else {
+		return nil, errors.New("invalid LicenceKind")
+	}
+}
 
 // LimitStruct returns a Limits struct filled for the given kind.
 func LimitStruct(kind LimitKinds) Limits {

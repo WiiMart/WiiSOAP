@@ -121,7 +121,7 @@ type Transactions struct {
 	ItemPricing    []Limits `xml:"ItemPricing"`
 	TitleId        string   `xml:"TitleId,omitempty"`
 	ItemCode       int      `xml:"ItemCode,omitempty"`
-	ReferenceId    int      `xml:"ReferenceId,omitempty"`
+	ReferenceId    string   `xml:"ReferenceId,omitempty"`
 	ReferenceValue int      `xml:"ReferenceValue,omitempty"`
 }
 

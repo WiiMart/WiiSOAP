@@ -169,18 +169,18 @@ func purchaseTitle(e *Envelope) {
 func listPurchaseHistory(e *Envelope) {
 	e.AddCustomType([]Transactions{
 		{
-			TransactionId: "12345678",
+			TransactionId: "00000000",
 			Date:          e.Timestamp(),
-			Type:          "SERVICE",
-			TotalPaid:     7,
+			Type:          string(SERVICE),
+			TotalPaid:     0,
 			Currency:      "POINTS",
 			ItemId:        0,
 			TitleId:       "000100014843494A",
 			ItemPricing: []Limits{
 				LimitStruct(DR),
 			},
-			ReferenceId:    1,
-			ReferenceValue: 19224,
+			ReferenceId:    "01234567890123456789012345678912",
+			ReferenceValue: 1,
 		},
 	})
 

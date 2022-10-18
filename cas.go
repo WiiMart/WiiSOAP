@@ -6,6 +6,26 @@ func listItems(e *Envelope) {
 		e.Error(9, "Unable to obtain title.", err)
 	}
 
+	attrs, err := e.getKeys("AttributeFilters")
+	if err != nil {
+		e.Error(5, "AttributeFilters key did not exist!", err)
+	}
+
+	var licenceStr string
+	for _, attr := range attrs {
+		name, value := parseNameValue(attr.InnerText())
+		if name == "TitleKind" {
+			licenceStr = value
+		}
+	}
+
+	// Now validate
+	licenceKind, err := GetLicenceKind(licenceStr)
+	if err != nil {
+		e.Error(5, "Invalid TitleKind was passed by SOAP", err)
+	}
+
+	// TODO(SketchMaster2001): Query database for items
 	e.AddKVNode("ListResultTotalSize", "1")
 	e.AddCustomType(Items{
 		TitleId: titleId,
@@ -35,8 +55,8 @@ func listItems(e *Envelope) {
 				Amount:   0,
 				Currency: "POINTS",
 			},
-			Limits:      LimitStruct(DR),
-			LicenseKind: RENTAL,
+			Limits:      LimitStruct(PR),
+			LicenseKind: *licenceKind,
 		},
 	})
 }

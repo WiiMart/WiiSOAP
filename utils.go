@@ -209,6 +209,15 @@ func (e *Envelope) Error(errorCode int, reason string, err error) {
 	e.AddKVNode("ErrorMessage", fmt.Sprintf("%s: %v", reason, err))
 }
 
+// parseNameValue parses the output of *xmlquery.Node.InnerText when it is a nested Name and Value node.
+func parseNameValue(s string) (string, string) {
+	s = strings.TrimSpace(s)
+	s = strings.Replace(s, " ", "", strings.Count(s, " ")-1)
+	decoded := strings.Split(s, " ")
+
+	return strings.TrimSuffix(decoded[0], "\n"), decoded[1]
+}
+
 // normalise parses a document, returning a document with only the request type's child nodes, stripped of prefix.
 func normalise(service string, action string, reader io.Reader) (*xmlquery.Node, error) {
 	doc, err := xmlquery.Parse(reader)
@@ -244,6 +253,17 @@ func (e *Envelope) getKey(key string) (string, error) {
 		return "", errors.New("missing mandatory key named " + key)
 	} else {
 		return node.InnerText(), nil
+	}
+}
+
+// getKeys returns a list of xmlquery.Node, if documented.
+func (e *Envelope) getKeys(key string) ([]*xmlquery.Node, error) {
+	node := xmlquery.Find(e.doc, "//"+key)
+
+	if node == nil {
+		return nil, errors.New("missing mandatory key named " + key)
+	} else {
+		return node, nil
 	}
 }
 
