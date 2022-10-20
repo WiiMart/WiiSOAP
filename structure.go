@@ -110,15 +110,14 @@ type Limits struct {
 
 // Transactions represents a common XML structure.
 type Transactions struct {
-	XMLName       xml.Name `xml:"Transactions"`
-	TransactionId string   `xml:"TransactionId"`
-	Date          string   `xml:"Date"`
-	Type          string   `xml:"Type"`
-	TotalPaid     int      `xml:"TotalPaid"`
-	Currency      string   `xml:"Currency"`
-	ItemId        int      `xml:"ItemId"`
-	// TODO: Is this correct? getComplex is called and then limits are queried
-	ItemPricing    []Limits `xml:"ItemPricing"`
+	XMLName        xml.Name `xml:"Transactions"`
+	TransactionId  string   `xml:"TransactionId"`
+	Date           string   `xml:"Date"`
+	Type           string   `xml:"Type"`
+	TotalPaid      int      `xml:"TotalPaid"`
+	Currency       string   `xml:"Currency"`
+	ItemId         int      `xml:"ItemId"`
+	ItemPricing    Prices   `xml:"ItemPricing"`
 	TitleId        string   `xml:"TitleId,omitempty"`
 	ItemCode       int      `xml:"ItemCode,omitempty"`
 	ReferenceId    string   `xml:"ReferenceId,omitempty"`

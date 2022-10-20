@@ -167,20 +167,27 @@ func purchaseTitle(e *Envelope) {
 }
 
 func listPurchaseHistory(e *Envelope) {
+	// TODO(SketchMaster2001) Query database for transactions
 	e.AddCustomType([]Transactions{
 		{
 			TransactionId: "00000000",
-			Date:          e.Timestamp(),
-			Type:          string(SERVICE),
-			TotalPaid:     0,
-			Currency:      "POINTS",
-			ItemId:        0,
-			TitleId:       "000100014843494A",
-			ItemPricing: []Limits{
-				LimitStruct(DR),
+			// Is timestamp in milliseconds, placeholder one is Wed Oct 19 2022 18:02:46
+			Date:      "1666202566218",
+			Type:      "PURCHGAME",
+			TotalPaid: 0,
+			Currency:  "POINTS",
+			ItemId:    0,
+			ItemPricing: Prices{
+				ItemId: 0,
+				Price: Price{
+					Amount:   0,
+					Currency: "POINTS",
+				},
+				Limits:      LimitStruct(PR),
+				LicenseKind: PERMANENT,
 			},
-			ReferenceId:    "01234567890123456789012345678912",
-			ReferenceValue: 1,
+			TitleId:     "000101006843494A",
+			ReferenceId: "01234567890123456789012345678912",
 		},
 	})
 
