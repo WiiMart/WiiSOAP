@@ -18,11 +18,16 @@
 package main
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
+	v1Ticket "github.com/OpenShopChannel/V1TicketGenerator"
 	"github.com/wii-tools/wadlib"
 	"log"
+	"math"
+	"strconv"
 	"strings"
+	"time"
 )
 
 const (
@@ -31,14 +36,24 @@ const (
 		WHERE owned_titles.title_id = tickets.title_id
 		AND owned_titles.account_id = $1`
 
+	QueryOwnedServiceTitles = `SELECT titles.reference_id, owned_titles.date_purchased, titles.item_id, titles.price
+		FROM titles, owned_titles
+		WHERE titles.item_id = owned_titles.item_id
+		AND owned_titles.account_id = $1`
+
 	QueryTicketStatement = `SELECT ticket, version FROM tickets WHERE title_id = $1`
 
-	AssociateTicketStatement = `INSERT INTO owned_titles (account_id, title_id, version)
-		VALUES ($1, $2, $3)`
+	AssociateTicketStatement = `INSERT INTO owned_titles (account_id, title_id, version, item_id)
+		VALUES ($1, $2, $3, $4)`
 
 	// SharedBalanceAmount describes the maximum signed 32-bit integer value.
 	// It is not an actual tracked points value, but exists to permit reuse.
-	SharedBalanceAmount = 2147483647
+	SharedBalanceAmount = math.MaxInt32
+
+	// WiinoMaApplicationID is the title ID for the Japanese channel Wii no Ma.
+	WiinoMaApplicationID = "000100014843494A"
+	// WiinoMaServiceTitleID is the service ID used by Wii no Ma's theatre.
+	WiinoMaServiceTitleID = "000101006843494a"
 )
 
 func getBalance() Balance {
@@ -109,11 +124,20 @@ func getETickets(e *Envelope) {
 }
 
 func purchaseTitle(e *Envelope) {
-	//accountId, err := e.AccountId()
-	//if err != nil {
-	//	e.Error(2, "missing account ID", err)
-	//	return
-	//}
+	accountId, err := e.AccountId()
+	if err != nil {
+		e.Error(2, "missing account ID", err)
+		return
+	}
+
+	tempItemId, err := e.getKey("ItemId")
+	if err != nil {
+		e.Error(2, "missing item ID", err)
+		return
+	}
+
+	// Our struct takes an integer rather than a string.
+	itemId, _ := strconv.Atoi(tempItemId)
 
 	// Determine the title ID we're going to purchase.
 	titleId, err := e.getKey("TitleId")
@@ -138,12 +162,88 @@ func purchaseTitle(e *Envelope) {
 		return
 	}
 
+	price := 0
+	// Wii no Ma needs the ticket to be in the v1 ticket format.
+	if titleId == WiinoMaServiceTitleID {
+		// Firstly we need to change our title ID to the Wii no Ma application ID.
+		titleId, err = e.getKey("ApplicationId")
+		if err != nil {
+			e.Error(2, "missing application ID", err)
+			return
+		}
+
+		refId, err := e.getKey("ReferenceId")
+		if err != nil {
+			e.Error(2, "missing reference ID", err)
+			return
+		}
+
+		// Convert reference ID to bytes
+		refIdBytes, err := hex.DecodeString(refId)
+		if err != nil {
+			log.Printf("unexpected error converting reference id to bytes: %v", err)
+			e.Error(2, "error purchasing", nil)
+			return
+		}
+
+		var referenceId [16]byte
+		copy(referenceId[:], refIdBytes)
+
+		subscriptions := []v1Ticket.V1SubscriptionRecord{
+			{
+				ExpirationTime: uint32(time.Now().AddDate(0, 1, 0).Unix()),
+				ReferenceID:    referenceId,
+			},
+		}
+
+		// Query the database for other purchased items
+		rows, err := pool.Query(ctx, QueryOwnedServiceTitles, accountId)
+		if err != nil {
+			log.Printf("unexpected error purchasing: %v", err)
+			e.Error(2, "error purchasing", nil)
+			return
+		}
+
+		defer rows.Close()
+		for rows.Next() {
+			var currentRefIdString string
+			var purchasedTime time.Time
+			err = rows.Scan(&currentRefIdString, &purchasedTime, nil, &price)
+			if err != nil {
+				log.Printf("unexpected error purchasing: %v", err)
+				e.Error(2, "error purchasing", nil)
+				return
+			}
+
+			refIdBytes, err = hex.DecodeString(currentRefIdString)
+			if err != nil {
+				log.Printf("unexpected error converting reference id to bytes: %v", err)
+				e.Error(2, "error purchasing", nil)
+				return
+			}
+
+			var currentReferenceId [16]byte
+			copy(currentReferenceId[:], refIdBytes)
+			subscriptions = append(subscriptions, v1Ticket.V1SubscriptionRecord{
+				ExpirationTime: uint32(purchasedTime.AddDate(0, 0, 30).Unix()),
+				ReferenceID:    currentReferenceId,
+			})
+		}
+
+		ticket, err = v1Ticket.CreateV1Ticket(ticket, subscriptions)
+		if err != nil {
+			log.Printf("unexpected error creating v1Ticket: %v", err)
+			e.Error(2, "error creating ticket", nil)
+			return
+		}
+	}
+
 	// Associate the given title ID with the user.
-	//_, err = pool.Exec(ctx, AssociateTicketStatement, accountId, titleId, version)
-	//if err != nil {
-	//	log.Printf("unexpected error purchasing: %v", err)
-	//	e.Error(2, "error purchasing", nil)
-	//}
+	_, err = pool.Exec(ctx, AssociateTicketStatement, accountId, titleId, version, itemId)
+	if err != nil {
+		log.Printf("unexpected error purchasing: %v", err)
+		e.Error(2, "error purchasing", nil)
+	}
 
 	// The returned ticket is expected to have two other certificates associated.
 	ticketString := b64(append(ticket, wadlib.CertChainTemplate...))
@@ -153,9 +253,9 @@ func purchaseTitle(e *Envelope) {
 		TransactionId: "00000000",
 		Date:          e.Timestamp(),
 		Type:          "PURCHGAME",
-		TotalPaid:     0,
+		TotalPaid:     price,
 		Currency:      "POINTS",
-		ItemId:        0,
+		ItemId:        itemId,
 	})
 	e.AddKVNode("SyncTime", e.Timestamp())
 
@@ -168,8 +268,68 @@ func purchaseTitle(e *Envelope) {
 
 func listPurchaseHistory(e *Envelope) {
 	// TODO(SketchMaster2001) Query database for transactions
-	e.AddCustomType([]Transactions{
-		{
+	accountId, err := e.AccountId()
+	if err != nil {
+		e.Error(2, "missing account ID", err)
+		return
+	}
+
+	titleId, err := e.getKey("ApplicationId")
+	if err != nil {
+		e.Error(2, "missing application ID", err)
+		return
+	}
+
+	var transactions []Transactions
+
+	// We will query the database differently for Wii no Ma.
+	if titleId == WiinoMaApplicationID {
+		// Query the database for other purchased items
+		rows, err := pool.Query(ctx, QueryOwnedServiceTitles, accountId)
+		if err != nil {
+			log.Printf("unexpected error purchasing: %v", err)
+			e.Error(2, "error purchasing", nil)
+			return
+		}
+
+		defer rows.Close()
+		for rows.Next() {
+			var refId string
+			var purchasedTime time.Time
+			var itemId int
+			var price int
+			err = rows.Scan(&refId, &purchasedTime, &itemId, &price)
+			if err != nil {
+				log.Printf("unexpected error purchasing: %v", err)
+				e.Error(2, "error purchasing", nil)
+				return
+			}
+
+			transaction := Transactions{
+				TransactionId: "00000000",
+				Date:          strconv.Itoa(int(purchasedTime.UnixMilli())),
+				Type:          "PURCHGAME",
+				TotalPaid:     price,
+				Currency:      "POINTS",
+				ItemId:        itemId,
+				ItemPricing: Prices{
+					ItemId: itemId,
+					Price: Price{
+						Amount:   price,
+						Currency: "POINTS",
+					},
+					Limits:      LimitStruct(PR),
+					LicenseKind: SERVICE,
+				},
+				TitleId:     "000101006843494A",
+				ItemCode:    itemId,
+				ReferenceId: refId,
+			}
+
+			transactions = append(transactions, transaction)
+		}
+	} else {
+		transactions = append(transactions, Transactions{
 			TransactionId: "00000000",
 			// Is timestamp in milliseconds, placeholder one is Wed Oct 19 2022 18:02:46
 			Date:      "1666202566218",
@@ -188,10 +348,11 @@ func listPurchaseHistory(e *Envelope) {
 			},
 			TitleId:     "000101006843494A",
 			ReferenceId: "01234567890123456789012345678912",
-		},
-	})
+		})
+	}
 
-	e.AddKVNode("ListResultTotalSize", "1")
+	e.AddCustomType(transactions)
+	e.AddKVNode("ListResultTotalSize", strconv.Itoa(len(transactions)))
 }
 
 // genServiceUrl returns a URL with the given service against a configured URL.

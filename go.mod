@@ -3,6 +3,7 @@ module github.com/OpenShopChannel/WiiSOAP
 go 1.18
 
 require (
+	github.com/OpenShopChannel/V1TicketGenerator v0.0.0-20221103013129-b7ba13a5f57a
 	github.com/RiiConnect24/wiino v0.0.0-20210419165641-a2614cecbcca
 	github.com/antchfx/xmlquery v1.3.11
 	github.com/jackc/pgconn v1.12.1

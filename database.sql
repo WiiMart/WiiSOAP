@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 14.1
--- Dumped by pg_dump version 14.1
+-- Dumped from database version 14.5 (Homebrew)
+-- Dumped by pg_dump version 14.5 (Homebrew)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -27,7 +27,9 @@ SET default_table_access_method = heap;
 CREATE TABLE public.owned_titles (
                                      account_id integer NOT NULL,
                                      title_id character varying(16) NOT NULL,
-                                     version integer
+                                     version integer,
+                                     item_id integer,
+                                     date_purchased timestamp without time zone DEFAULT now() NOT NULL
 );
 
 
@@ -47,6 +49,21 @@ CREATE TABLE public.tickets (
 ALTER TABLE public.tickets OWNER TO wiisoap;
 
 --
+-- Name: titles; Type: TABLE; Schema: public; Owner: wiisoap
+--
+
+CREATE TABLE public.titles (
+                               item_id integer NOT NULL,
+                               price_code integer NOT NULL,
+                               price integer NOT NULL,
+                               title_id character varying(16) NOT NULL,
+                               reference_id character varying(32)
+);
+
+
+ALTER TABLE public.titles OWNER TO wiisoap;
+
+--
 -- Name: userbase; Type: TABLE; Schema: public; Owner: wiisoap
 --
 
@@ -63,11 +80,43 @@ CREATE TABLE public.userbase (
 ALTER TABLE public.userbase OWNER TO wiisoap;
 
 --
--- Name: owned_titles owned_titles_pk; Type: CONSTRAINT; Schema: public; Owner: wiisoap
+-- Data for Name: owned_titles; Type: TABLE DATA; Schema: public; Owner: wiisoap
 --
 
-ALTER TABLE ONLY public.owned_titles
-    ADD CONSTRAINT owned_titles_pk PRIMARY KEY (account_id);
+COPY public.owned_titles (account_id, title_id, version, item_id, date_purchased) FROM stdin;
+\.
+
+
+--
+-- Data for Name: tickets; Type: TABLE DATA; Schema: public; Owner: wiisoap
+--
+
+COPY public.tickets (title_id, ticket, version) FROM stdin;
+\.
+
+
+--
+-- Data for Name: titles; Type: TABLE DATA; Schema: public; Owner: wiisoap
+--
+
+COPY public.titles (item_id, price_code, price, title_id, reference_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: userbase; Type: TABLE DATA; Schema: public; Owner: wiisoap
+--
+
+COPY public.userbase (device_id, device_token, device_token_hashed, account_id, region, serial_number) FROM stdin;
+\.
+
+
+--
+-- Name: titles item_id; Type: CONSTRAINT; Schema: public; Owner: wiisoap
+--
+
+ALTER TABLE ONLY public.titles
+    ADD CONSTRAINT item_id PRIMARY KEY (item_id);
 
 
 --
@@ -77,6 +126,13 @@ ALTER TABLE ONLY public.owned_titles
 ALTER TABLE ONLY public.tickets
     ADD CONSTRAINT tickets_pk PRIMARY KEY (title_id);
 
+
+--
+-- Name: titles titles_reference_id_key; Type: CONSTRAINT; Schema: public; Owner: wiisoap
+--
+
+ALTER TABLE ONLY public.titles
+    ADD CONSTRAINT titles_reference_id_key UNIQUE (reference_id);
 
 --
 -- Name: userbase userbase_pk; Type: CONSTRAINT; Schema: public; Owner: wiisoap
@@ -90,7 +146,7 @@ ALTER TABLE ONLY public.userbase
 -- Name: owned_titles_account_id_uindex; Type: INDEX; Schema: public; Owner: wiisoap
 --
 
-CREATE UNIQUE INDEX owned_titles_account_id_uindex ON public.owned_titles USING btree (account_id);
+CREATE INDEX owned_titles_account_id_uindex ON public.owned_titles USING btree (account_id);
 
 
 --

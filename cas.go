@@ -1,5 +1,9 @@
 package main
 
+import "log"
+
+const QueryTitlesTableByPriceCode = `SELECT item_id, price FROM titles WHERE price_code = $1`
+
 func listItems(e *Envelope) {
 	titleId, err := e.getKey("TitleId")
 	if err != nil {
@@ -12,10 +16,13 @@ func listItems(e *Envelope) {
 	}
 
 	var licenceStr string
+	var pricingCode string
 	for _, attr := range attrs {
 		name, value := parseNameValue(attr.InnerText())
 		if name == "TitleKind" {
 			licenceStr = value
+		} else if name == "PricingCode" {
+			pricingCode = value
 		}
 	}
 
@@ -25,7 +32,18 @@ func listItems(e *Envelope) {
 		e.Error(5, "Invalid TitleKind was passed by SOAP", err)
 	}
 
-	// TODO(SketchMaster2001): Query database for items
+	// Query the titles table to get our title
+	row := pool.QueryRow(ctx, QueryTitlesTableByPriceCode, pricingCode)
+
+	var itemId int
+	var price int
+	err = row.Scan(&itemId, &price)
+	if err != nil {
+		log.Printf("error while querying titles table: %v", err)
+		e.Error(2, "error retrieving title", nil)
+		return
+	}
+
 	e.AddKVNode("ListResultTotalSize", "1")
 	e.AddCustomType(Items{
 		TitleId: titleId,
@@ -49,10 +67,9 @@ func listItems(e *Envelope) {
 			Age:    9,
 		},
 		Prices: Prices{
-			ItemId: 0,
+			ItemId: itemId,
 			Price: Price{
-				// Not sure about WSC, but must match the price for the title you are purchasing in Wii no Ma.
-				Amount:   0,
+				Amount:   price,
 				Currency: "POINTS",
 			},
 			Limits:      LimitStruct(PR),
