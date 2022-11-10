@@ -210,9 +210,9 @@ func determineTokenFormat(token string) (string, TokenType) {
 			return token[3:24], TokenTypeUnhashed
 		}
 	case "WT-":
-		// Hashed tokens are 45 characters in length.
-		if tokenLen == 45 {
-			return token[3:45], TokenTypeHashed
+		// Hashed tokens are 35 characters in length.
+		if tokenLen == 35 {
+			return token[3:35], TokenTypeHashed
 		}
 	}
 
