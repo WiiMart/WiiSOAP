@@ -73,7 +73,7 @@ CREATE TABLE public.userbase (
                                  device_token_hashed character varying(32) NOT NULL,
                                  account_id integer NOT NULL,
                                  region character varying(3),
-                                 serial_number character varying(11)
+                                 serial_number character varying(12)
 );
 
 
