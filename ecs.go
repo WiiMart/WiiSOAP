@@ -18,6 +18,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -31,30 +33,33 @@ import (
 )
 
 const (
+	// TODO (Sketch): Once v3 API has proper versions, remove query to tickets table.
 	QueryOwnedTitles = `SELECT owned_titles.title_id, tickets.version
 		FROM owned_titles, tickets
 		WHERE owned_titles.title_id = tickets.title_id
 		AND owned_titles.account_id = $1`
 
-	QueryOwnedServiceTitles = `SELECT titles.reference_id, owned_titles.date_purchased, titles.item_id, titles.price
+	QueryOwnedServiceTitles = `SELECT titles.reference_id, owned_titles.date_purchased, titles.item_id
 		FROM titles, owned_titles
 		WHERE titles.item_id = owned_titles.item_id
-		AND owned_titles.account_id = $1`
+		AND titles.title_id = $1
+		AND owned_titles.account_id = $2`
 
-	QueryTicketStatement = `SELECT ticket, version FROM tickets WHERE title_id = $1`
-
-	AssociateTicketStatement = `INSERT INTO owned_titles (account_id, title_id, version, item_id)
-		VALUES ($1, $2, $3, $4)`
+	AssociateTicketStatement = `INSERT INTO owned_titles (account_id, title_id, version, item_id, date_purchased)
+		VALUES ($1, $2, $3, $4, $5)`
 
 	// SharedBalanceAmount describes the maximum signed 32-bit integer value.
 	// It is not an actual tracked points value, but exists to permit reuse.
 	SharedBalanceAmount = math.MaxInt32
 
 	// WiinoMaApplicationID is the title ID for the Japanese channel Wii no Ma.
-	WiinoMaApplicationID = "000100014843494A"
+	WiinoMaApplicationID = "000100014843494a"
 	// WiinoMaServiceTitleID is the service ID used by Wii no Ma's theatre.
 	WiinoMaServiceTitleID = "000101006843494a"
 )
+
+// content_aes_key is the AES key that is used to encrypt title contents.
+var content_aes_key = [16]byte{0x72, 0x95, 0xDB, 0xC0, 0x47, 0x3C, 0x90, 0x0B, 0xB5, 0x94, 0x19, 0x9C, 0xB5, 0xBC, 0xD3, 0xDC}
 
 func getBalance() Balance {
 	return Balance{
@@ -146,29 +151,38 @@ func purchaseTitle(e *Envelope) {
 		return
 	}
 
-	// We store title IDs in lowercase.
-	titleId = strings.ToLower(titleId)
-
-	// Query the ticket and current version for this title.
-	var ticket []byte
-	var version int
-	row := pool.QueryRow(ctx, QueryTicketStatement, titleId)
-
-	err = row.Scan(&ticket, &version)
+	ticket := new(bytes.Buffer)
+	var ticketStruct wadlib.Ticket
+	err = binary.Read(bytes.NewReader(wadlib.TicketTemplate), binary.BigEndian, &ticketStruct)
 	if err != nil {
-		log.Printf("unexpected error purchasing: %v", err)
-		// TODO(spotlightishere): Can we more elegantly return an error when a title may not exist here?
-		e.Error(2, "error purchasing", nil)
+		// Should never happen but report
+		e.Error(2, "error reading ticket template", err)
 		return
 	}
 
-	price := 0
-	// Wii no Ma needs the ticket to be in the v1 ticket format.
+	// We will now formulate the ticket for this title.
+	intTitleId, err := strconv.ParseUint(titleId, 16, 64)
+	if err != nil {
+		e.Error(2, "invalid title id", err)
+		return
+	}
+
+	ticketStruct.TitleID = intTitleId
+
+	// Title key is encrypted with the common key and current title ID
+	ticketStruct.UpdateTitleKey(content_aes_key)
+
+	titleId = strings.ToLower(titleId)
 	if titleId == WiinoMaServiceTitleID {
-		// Firstly we need to change our title ID to the Wii no Ma application ID.
-		titleId, err = e.getKey("ApplicationId")
+		// Wii no Ma needs the ticket to be in the v1 ticket format.
+		// Update the ticket to reflect that.
+		ticketStruct.FileVersion = 1
+		ticketStruct.AccessTitleMask = math.MaxUint32
+		ticketStruct.LicenseType = 5
+
+		err = binary.Write(ticket, binary.BigEndian, ticketStruct)
 		if err != nil {
-			e.Error(2, "missing application ID", err)
+			e.Error(2, "failed to create ticket", err)
 			return
 		}
 
@@ -196,8 +210,8 @@ func purchaseTitle(e *Envelope) {
 			},
 		}
 
-		// Query the database for other purchased items
-		rows, err := pool.Query(ctx, QueryOwnedServiceTitles, accountId)
+		// Query the database for other purchased items of the same title id.
+		rows, err := pool.Query(ctx, QueryOwnedServiceTitles, titleId, accountId)
 		if err != nil {
 			log.Printf("unexpected error purchasing: %v", err)
 			e.Error(2, "error purchasing", nil)
@@ -208,7 +222,7 @@ func purchaseTitle(e *Envelope) {
 		for rows.Next() {
 			var currentRefIdString string
 			var purchasedTime time.Time
-			err = rows.Scan(&currentRefIdString, &purchasedTime, nil, &price)
+			err = rows.Scan(&currentRefIdString, &purchasedTime, nil)
 			if err != nil {
 				log.Printf("unexpected error purchasing: %v", err)
 				e.Error(2, "error purchasing", nil)
@@ -230,32 +244,48 @@ func purchaseTitle(e *Envelope) {
 			})
 		}
 
-		ticket, err = v1Ticket.CreateV1Ticket(ticket, subscriptions)
+		newTicket, err := v1Ticket.CreateV1Ticket(ticket.Bytes(), subscriptions)
 		if err != nil {
 			log.Printf("unexpected error creating v1Ticket: %v", err)
 			e.Error(2, "error creating ticket", nil)
 			return
 		}
+
+		ticket = bytes.NewBuffer(newTicket)
+	} else {
+		// TODO: (Sketch) Validate if this title actually exists using the v3 API.
+		err = binary.Write(ticket, binary.BigEndian, ticketStruct)
+		if err != nil {
+			e.Error(2, "failed to create ticket", err)
+			return
+		}
 	}
 
 	// Associate the given title ID with the user.
-	_, err = pool.Exec(ctx, AssociateTicketStatement, accountId, titleId, version, itemId)
+	// TODO (Sketch): Once v3 API has proper versions, use.
+	_, err = pool.Exec(ctx, AssociateTicketStatement, accountId, titleId, 0, itemId, time.Now().UTC())
 	if err != nil {
 		log.Printf("unexpected error purchasing: %v", err)
 		e.Error(2, "error purchasing", nil)
 	}
 
 	// The returned ticket is expected to have two other certificates associated.
-	ticketString := b64(append(ticket, wadlib.CertChainTemplate...))
+	ticketString := b64(append(ticket.Bytes(), wadlib.CertChainTemplate...))
 
 	e.AddCustomType(getBalance())
 	e.AddCustomType(Transactions{
 		TransactionId: "00000000",
 		Date:          e.Timestamp(),
 		Type:          "PURCHGAME",
-		TotalPaid:     price,
+		TotalPaid:     0,
 		Currency:      "POINTS",
 		ItemId:        itemId,
+		ItemPricing: Prices{
+			ItemId:      itemId,
+			Price:       Price{Amount: 0, Currency: "POINTS"},
+			Limits:      LimitStruct(PR),
+			LicenseKind: PERMANENT,
+		},
 	})
 	e.AddKVNode("SyncTime", e.Timestamp())
 
@@ -267,7 +297,6 @@ func purchaseTitle(e *Envelope) {
 }
 
 func listPurchaseHistory(e *Envelope) {
-	// TODO(SketchMaster2001) Query database for transactions
 	accountId, err := e.AccountId()
 	if err != nil {
 		e.Error(2, "missing account ID", err)
@@ -280,14 +309,15 @@ func listPurchaseHistory(e *Envelope) {
 		return
 	}
 
+	titleId = strings.ToLower(titleId)
 	var transactions []Transactions
 
 	// We will query the database differently for Wii no Ma.
 	if titleId == WiinoMaApplicationID {
 		// Query the database for other purchased items
-		rows, err := pool.Query(ctx, QueryOwnedServiceTitles, accountId)
+		rows, err := pool.Query(ctx, QueryOwnedServiceTitles, WiinoMaServiceTitleID, accountId)
 		if err != nil {
-			log.Printf("unexpected error purchasing: %v", err)
+			log.Printf("unexpected error querying owned service titles: %v", err)
 			e.Error(2, "error purchasing", nil)
 			return
 		}
@@ -297,8 +327,7 @@ func listPurchaseHistory(e *Envelope) {
 			var refId string
 			var purchasedTime time.Time
 			var itemId int
-			var price int
-			err = rows.Scan(&refId, &purchasedTime, &itemId, &price)
+			err = rows.Scan(&refId, &purchasedTime, &itemId)
 			if err != nil {
 				log.Printf("unexpected error purchasing: %v", err)
 				e.Error(2, "error purchasing", nil)
@@ -307,21 +336,23 @@ func listPurchaseHistory(e *Envelope) {
 
 			transaction := Transactions{
 				TransactionId: "00000000",
-				Date:          strconv.Itoa(int(purchasedTime.UnixMilli())),
-				Type:          "PURCHGAME",
-				TotalPaid:     price,
-				Currency:      "POINTS",
-				ItemId:        itemId,
+				// (Sketch) I don't know why but Wii no Ma won't acknowledge the entry if it isn't past a day from
+				// purchase.
+				Date:      strconv.Itoa(int(purchasedTime.AddDate(0, 0, -1).UnixMilli())),
+				Type:      "PURCHGAME",
+				TotalPaid: 0,
+				Currency:  "POINTS",
+				ItemId:    itemId,
 				ItemPricing: Prices{
 					ItemId: itemId,
 					Price: Price{
-						Amount:   price,
+						Amount:   0,
 						Currency: "POINTS",
 					},
 					Limits:      LimitStruct(PR),
 					LicenseKind: SERVICE,
 				},
-				TitleId:     "000101006843494A",
+				TitleId:     WiinoMaServiceTitleID,
 				ItemCode:    itemId,
 				ReferenceId: refId,
 			}
@@ -346,8 +377,7 @@ func listPurchaseHistory(e *Envelope) {
 				Limits:      LimitStruct(PR),
 				LicenseKind: PERMANENT,
 			},
-			TitleId:     "000101006843494A",
-			ReferenceId: "01234567890123456789012345678912",
+			TitleId: "000101006843494A",
 		})
 	}
 
