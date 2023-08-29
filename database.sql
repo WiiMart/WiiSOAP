@@ -36,23 +36,10 @@ CREATE TABLE public.owned_titles (
 ALTER TABLE public.owned_titles OWNER TO wiisoap;
 
 --
--- Name: tickets; Type: TABLE; Schema: public; Owner: wiisoap
+-- Name: service_titles; Type: TABLE; Schema: public; Owner: wiisoap
 --
 
-CREATE TABLE public.tickets (
-                                title_id character varying(16) NOT NULL,
-                                ticket bytea,
-                                version integer
-);
-
-
-ALTER TABLE public.tickets OWNER TO wiisoap;
-
---
--- Name: titles; Type: TABLE; Schema: public; Owner: wiisoap
---
-
-CREATE TABLE public.titles (
+CREATE TABLE public.service_titles (
                                item_id integer NOT NULL,
                                price_code integer NOT NULL,
                                price integer NOT NULL,
@@ -61,7 +48,7 @@ CREATE TABLE public.titles (
 );
 
 
-ALTER TABLE public.titles OWNER TO wiisoap;
+ALTER TABLE public.service_titles OWNER TO wiisoap;
 
 --
 -- Name: userbase; Type: TABLE; Schema: public; Owner: wiisoap
@@ -86,20 +73,11 @@ ALTER TABLE public.userbase OWNER TO wiisoap;
 COPY public.owned_titles (account_id, title_id, version, item_id, date_purchased) FROM stdin;
 \.
 
-
 --
--- Data for Name: tickets; Type: TABLE DATA; Schema: public; Owner: wiisoap
---
-
-COPY public.tickets (title_id, ticket, version) FROM stdin;
-\.
-
-
---
--- Data for Name: titles; Type: TABLE DATA; Schema: public; Owner: wiisoap
+-- Data for Name: service_titles; Type: TABLE DATA; Schema: public; Owner: wiisoap
 --
 
-COPY public.titles (item_id, price_code, price, title_id, reference_id) FROM stdin;
+COPY public.service_titles (item_id, price_code, price, title_id, reference_id) FROM stdin;
 \.
 
 
@@ -112,27 +90,18 @@ COPY public.userbase (device_id, device_token, device_token_hashed, account_id, 
 
 
 --
--- Name: titles item_id; Type: CONSTRAINT; Schema: public; Owner: wiisoap
+-- Name: service_titles item_id; Type: CONSTRAINT; Schema: public; Owner: wiisoap
 --
 
-ALTER TABLE ONLY public.titles
+ALTER TABLE ONLY public.service_titles
     ADD CONSTRAINT item_id PRIMARY KEY (item_id);
 
-
 --
--- Name: tickets tickets_pk; Type: CONSTRAINT; Schema: public; Owner: wiisoap
---
-
-ALTER TABLE ONLY public.tickets
-    ADD CONSTRAINT tickets_pk PRIMARY KEY (title_id);
-
-
---
--- Name: titles titles_reference_id_key; Type: CONSTRAINT; Schema: public; Owner: wiisoap
+-- Name: service_titles service_titles_reference_id_key; Type: CONSTRAINT; Schema: public; Owner: wiisoap
 --
 
-ALTER TABLE ONLY public.titles
-    ADD CONSTRAINT titles_reference_id_key UNIQUE (reference_id);
+ALTER TABLE ONLY public.service_titles
+    ADD CONSTRAINT service_titles_reference_id_key UNIQUE (reference_id);
 
 --
 -- Name: userbase userbase_pk; Type: CONSTRAINT; Schema: public; Owner: wiisoap

@@ -36,10 +36,10 @@ const (
 		FROM owned_titles
 		WHERE owned_titles.account_id = $1`
 
-	QueryOwnedServiceTitles = `SELECT titles.reference_id, owned_titles.date_purchased, titles.item_id
-		FROM titles, owned_titles
-		WHERE titles.item_id = owned_titles.item_id
-		AND titles.title_id = $1
+	QueryOwnedServiceTitles = `SELECT service_titles.reference_id, owned_titles.date_purchased, service_titles.item_id
+		FROM service_titles, owned_titles
+		WHERE service_titles.item_id = owned_titles.item_id
+		AND service_titles.title_id = $1
 		AND owned_titles.account_id = $2`
 
 	AssociateTicketStatement = `INSERT INTO owned_titles (account_id, title_id, version, item_id, date_purchased)

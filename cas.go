@@ -2,7 +2,7 @@ package main
 
 import "log"
 
-const QueryTitlesTableByPriceCode = `SELECT item_id, price FROM titles WHERE price_code = $1`
+const QueryTitlesTableByPriceCode = `SELECT item_id, price FROM service_titles WHERE price_code = $1`
 
 func listItems(e *Envelope) {
 	titleId, err := e.getKey("TitleId")
