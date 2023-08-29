@@ -28,16 +28,13 @@ import (
 	"log"
 	"math"
 	"strconv"
-	"strings"
 	"time"
 )
 
 const (
-	// TODO (Sketch): Once v3 API has proper versions, remove query to tickets table.
-	QueryOwnedTitles = `SELECT owned_titles.title_id, tickets.version
-		FROM owned_titles, tickets
-		WHERE owned_titles.title_id = tickets.title_id
-		AND owned_titles.account_id = $1`
+	QueryOwnedTitles = `SELECT owned_titles.title_id
+		FROM owned_titles
+		WHERE owned_titles.account_id = $1`
 
 	QueryOwnedServiceTitles = `SELECT titles.reference_id, owned_titles.date_purchased, titles.item_id
 		FROM titles, owned_titles
@@ -53,13 +50,13 @@ const (
 	SharedBalanceAmount = math.MaxInt32
 
 	// WiinoMaApplicationID is the title ID for the Japanese channel Wii no Ma.
-	WiinoMaApplicationID = "000100014843494a"
+	WiinoMaApplicationID = "000100014843494A"
 	// WiinoMaServiceTitleID is the service ID used by Wii no Ma's theatre.
-	WiinoMaServiceTitleID = "000101006843494a"
+	WiinoMaServiceTitleID = "000101006843494A"
 )
 
-// content_aes_key is the AES key that is used to encrypt title contents.
-var content_aes_key = [16]byte{0x72, 0x95, 0xDB, 0xC0, 0x47, 0x3C, 0x90, 0x0B, 0xB5, 0x94, 0x19, 0x9C, 0xB5, 0xBC, 0xD3, 0xDC}
+// contentAesKey is the AES key that is used to encrypt title contents.
+var contentAesKey = [16]byte{0x72, 0x95, 0xDB, 0xC0, 0x47, 0x3C, 0x90, 0x0B, 0xB5, 0x94, 0x19, 0x9C, 0xB5, 0xBC, 0xD3, 0xDC}
 
 func getBalance() Balance {
 	return Balance{
@@ -97,17 +94,28 @@ func listETickets(e *Envelope) {
 	defer rows.Close()
 	for rows.Next() {
 		var titleId string
-		var version int
-		err = rows.Scan(&titleId, &version)
+		err = rows.Scan(&titleId)
 		if err != nil {
 			log.Printf("error executing statement: %v\n", err)
 			e.Error(2, "database error", errors.New("failed to execute db operation"))
 			return
 		}
 
+		app, err := GetOSCApp(titleId)
+		if err != nil {
+			e.Error(2, "an error has occurred retrieving app metadata", err)
+			return
+		}
+
+		if app == nil {
+			// Quite possibly an app was de-listed?
+			e.Error(2, "title does not exist", nil)
+			return
+		}
+
 		e.AddCustomType(Tickets{
 			TitleId: titleId,
-			Version: version,
+			Version: app.Shop.Version,
 
 			// We do not support migration, ticket IDs, or revocation.
 			TicketId:     "0",
@@ -170,9 +178,9 @@ func purchaseTitle(e *Envelope) {
 	ticketStruct.TitleID = intTitleId
 
 	// Title key is encrypted with the common key and current title ID
-	ticketStruct.UpdateTitleKey(content_aes_key)
+	ticketStruct.UpdateTitleKey(contentAesKey)
 
-	titleId = strings.ToLower(titleId)
+	version := 0
 	if titleId == WiinoMaServiceTitleID {
 		// Wii no Ma needs the ticket to be in the v1 ticket format.
 		// Update the ticket to reflect that.
@@ -253,7 +261,20 @@ func purchaseTitle(e *Envelope) {
 
 		ticket = bytes.NewBuffer(newTicket)
 	} else {
-		// TODO: (Sketch) Validate if this title actually exists using the v3 API.
+		// Validate that this title exists.
+		app, err := GetOSCApp(titleId)
+		if err != nil {
+			e.Error(2, "an error has occurred retrieving app metadata", err)
+			return
+		}
+
+		if app == nil {
+			e.Error(2, "title does not exist", nil)
+			return
+		}
+
+		version = app.Shop.Version
+
 		err = binary.Write(ticket, binary.BigEndian, ticketStruct)
 		if err != nil {
 			e.Error(2, "failed to create ticket", err)
@@ -262,8 +283,7 @@ func purchaseTitle(e *Envelope) {
 	}
 
 	// Associate the given title ID with the user.
-	// TODO (Sketch): Once v3 API has proper versions, use.
-	_, err = pool.Exec(ctx, AssociateTicketStatement, accountId, titleId, 0, itemId, time.Now().UTC())
+	_, err = pool.Exec(ctx, AssociateTicketStatement, accountId, titleId, version, itemId, time.Now().UTC())
 	if err != nil {
 		log.Printf("unexpected error purchasing: %v", err)
 		e.Error(2, "error purchasing", nil)
@@ -309,12 +329,9 @@ func listPurchaseHistory(e *Envelope) {
 		return
 	}
 
-	titleId = strings.ToLower(titleId)
 	var transactions []Transactions
-
-	// We will query the database differently for Wii no Ma.
 	if titleId == WiinoMaApplicationID {
-		// Query the database for other purchased items
+		// We will query the database differently for Wii no Ma.
 		rows, err := pool.Query(ctx, QueryOwnedServiceTitles, WiinoMaServiceTitleID, accountId)
 		if err != nil {
 			log.Printf("unexpected error querying owned service titles: %v", err)
