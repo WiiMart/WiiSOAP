@@ -18,6 +18,7 @@
 package main
 
 import (
+	"bufio"
 	"crypto/md5"
 	"errors"
 	"fmt"
@@ -26,6 +27,8 @@ import (
 	"github.com/jackc/pgx/v4"
 	"log"
 	"math/rand"
+	"os"
+	"slices"
 	"strconv"
 )
 
@@ -34,7 +37,7 @@ const (
 		(device_id, device_token, device_token_hashed, account_id, region, serial_number) 
 	VALUES ($1, $2, $3, $4, $5, $6)`
 	SyncUserStatement = `SELECT 
-		account_id, device_token 
+		account_id, device_token, serial_number
 	FROM userbase WHERE 
 		region = $1 AND
 		device_id = $2`
@@ -92,14 +95,45 @@ func getRegistrationInfo(e *Envelope) {
 	e.AddKVNode("Currency", "POINTS")
 }
 
+func getWhitelistedSerialNumbers() []string {
+	file, err := os.Open("whitelist.txt")
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+
+	// Read each line
+	var sns []string
+	for scanner.Scan() {
+		sns = append(sns, scanner.Text())
+
+	}
+
+	// Check for errors during scanning
+	if err = scanner.Err(); err != nil {
+		panic(err)
+	}
+
+	return sns
+}
+
 func syncRegistration(e *Envelope) {
 	var accountId int64
 	var deviceToken string
+	var serialNumber string
 
 	user := pool.QueryRow(ctx, SyncUserStatement, e.Region(), e.DeviceId())
-	err := user.Scan(&accountId, &deviceToken)
+	err := user.Scan(&accountId, &deviceToken, &serialNumber)
 	if err != nil {
 		e.Error(7, "An error occurred querying the database.", err)
+	}
+
+	if !slices.Contains(getWhitelistedSerialNumbers(), serialNumber) {
+		// Since HTTP server runs on a separate Goroutine, this won't shut off the server,
+		// rather kill communication with the requesting console
+		panic(err)
 	}
 
 	e.AddKVNode("AccountId", strconv.FormatInt(accountId, 10))
@@ -131,6 +165,12 @@ func register(e *Envelope) {
 	if err != nil {
 		e.Error(7, "missing serial number", err)
 		return
+	}
+
+	if !slices.Contains(getWhitelistedSerialNumbers(), serialNo) {
+		// Since HTTP server runs on a separate Goroutine, this won't shut off the server,
+		// rather kill communication with the requesting console
+		panic(err)
 	}
 
 	// Validate given friend code.
