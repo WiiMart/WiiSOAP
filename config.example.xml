@@ -20,4 +20,8 @@
     This is useful when testing CAS directly.
     It is only functional when debug is enabled. -->
     <NoAuth>false</NoAuth>
+    <!-- Set to true to enable serial number
+    whitelisting by reading a newline separated file
+    located at whitelist.txt. -->
+    <Whitelist>false</Whitelist>
 </Config>

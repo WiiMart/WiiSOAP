@@ -130,7 +130,7 @@ func syncRegistration(e *Envelope) {
 		e.Error(7, "An error occurred querying the database.", err)
 	}
 
-	if !slices.Contains(getWhitelistedSerialNumbers(), serialNumber) {
+	if whitelistEnabled && !slices.Contains(getWhitelistedSerialNumbers(), serialNumber) {
 		// Since HTTP server runs on a separate Goroutine, this won't shut off the server,
 		// rather kill communication with the requesting console
 		panic(err)
@@ -167,7 +167,7 @@ func register(e *Envelope) {
 		return
 	}
 
-	if !slices.Contains(getWhitelistedSerialNumbers(), serialNo) {
+	if whitelistEnabled && !slices.Contains(getWhitelistedSerialNumbers(), serialNo) {
 		// Since HTTP server runs on a separate Goroutine, this won't shut off the server,
 		// rather kill communication with the requesting console
 		panic(err)

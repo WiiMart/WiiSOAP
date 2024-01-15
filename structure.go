@@ -39,8 +39,9 @@ type Config struct {
 	SQLPass    string `xml:"SQLPass"`
 	SQLDB      string `xml:"SQLDB"`
 
-	Debug  bool `xml:"Debug"`
-	NoAuth bool `xml:"NoAuth"`
+	Debug     bool `xml:"Debug"`
+	NoAuth    bool `xml:"NoAuth"`
+	Whitelist bool `xml:"Whitelist"`
 }
 
 // Envelope represents the root element of any response, soapenv:Envelope.
