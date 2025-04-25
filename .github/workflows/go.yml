@@ -29,3 +29,12 @@ jobs:
 
     - name: Build
       run: go build -v ./...
+      
+    - name: Create release ZIP
+      run: mkdir -p release && cp WiiSOAP release/ && cp config.example.xml release/ && zip -r wiisoap.zip release/
+    
+    - name: Upload release ZIP
+      uses: actions/upload-artifact@v3
+      with:
+        name: wiisoap-linux
+        path: wiisoap.zip       
