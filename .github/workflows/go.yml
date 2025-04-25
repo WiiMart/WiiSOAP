@@ -16,7 +16,7 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-12, macos-14]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         include:
           - os: ubuntu-latest
             display_name: "linux"
@@ -24,12 +24,9 @@ jobs:
           - os: windows-latest
             display_name: "windows"
             bin_name: "WiiSOAP.exe"
-          - os: macos-12
-            display_name: "mac-intel"
-            bin_name: "WiiSOAP-macos-intel"
-          - os: macos-14
+          - os: macos-latest  # Apple Silicon
             display_name: "mac-apple-silicon"
-            bin_name: "WiiSOAP-macos-arm64"
+            bin_name: "WiiSOAP"
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -55,12 +52,31 @@ jobs:
           GOARCH=${{ matrix.os == 'macos-14' && 'arm64' || 'amd64' }} \
           go build -v -o "${{ matrix.bin_name }}" ./...
 
-      - name: Create release ZIP
+      # Linux/macOS Zipping
+      - name: Create ZIP (Linux/macOS)
+        if: runner.os != 'Windows'
+        shell: bash
         run: |
           mkdir -p release
           cp "${{ matrix.bin_name }}" release/
           cp config.example.xml release/
           zip -r "wiisoap-${{ matrix.display_name }}.zip" release/
+
+      # Windows Zipping (using 7zip since Windows hates us)
+      - name: Install 7-Zip (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          choco install 7zip -y --no-progress
+
+      - name: Create ZIP (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path release -Force
+          Copy-Item "${{ matrix.bin_name }}" release/
+          Copy-Item config.example.xml release/
+          7z a "wiisoap-${{ matrix.display_name }}.zip" .\release\*
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
