@@ -19,6 +19,7 @@ package main
 
 import (
 	"encoding/xml"
+
 	"github.com/antchfx/xmlquery"
 )
 
@@ -79,7 +80,7 @@ type Response struct {
 
 	// These common fields are persistent across all requests.
 	Version            string `xml:"Version"`
-	DeviceId           int    `xml:"DeviceId"`
+	DeviceId           string `xml:"DeviceId"`
 	MessageId          string `xml:"MessageId"`
 	TimeStamp          string `xml:"TimeStamp"`
 	ErrorCode          int
@@ -106,7 +107,7 @@ type Balance struct {
 type Limits struct {
 	XMLName   xml.Name   `xml:"Limits"`
 	Limits    LimitKinds `xml:"Limits"`
-	LimitKind string     `xml:"LimitKind,omitempty"`
+	LimitKind string     `xml:"LimitKind"`
 }
 
 // Transactions represents a common XML structure.
@@ -119,10 +120,17 @@ type Transactions struct {
 	Currency       string   `xml:"Currency"`
 	ItemId         int      `xml:"ItemId"`
 	ItemPricing    Prices   `xml:"ItemPricing"`
-	TitleId        string   `xml:"TitleId,omitempty"`
+	TitleId        string   `xml:"TitleId"`
 	ItemCode       int      `xml:"ItemCode,omitempty"`
 	ReferenceId    string   `xml:"ReferenceId,omitempty"`
 	ReferenceValue int      `xml:"ReferenceValue,omitempty"`
+}
+
+type GiftTransactions struct {
+	XMLName       xml.Name `xml:"Transactions"`
+	TransactionId string   `xml:"TransactionId"`
+	Date          string   `xml:"Date"`
+	Type          string   `xml:"Type"`
 }
 
 // Tickets represents the format to inform a console of available titles for its consumption.
@@ -152,7 +160,7 @@ type ContentsMetadata struct {
 
 // Price holds the price for a title.
 type Price struct {
-	XMLName  xml.Name `xml:"Price"`
+	XMLName  xml.Name `xml:"Price,omitempty"`
 	Amount   int      `xml:"Amount"`
 	Currency string   `xml:"Currency"`
 }
@@ -182,4 +190,53 @@ type Ratings struct {
 	Rating  int      `xml:"Rating"`
 	Age     int      `xml:"Age"`
 	// There is also a `Descriptors` field
+}
+
+type Sender struct {
+	XMLName    xml.Name `xml:"Sender"`
+	DeviceCode string   `xml:"DeviceCode"`
+}
+
+type Recipient struct {
+	XMLName    xml.Name `xml:"Recipient"`
+	DeviceCode string   `xml:"DeviceCode"`
+}
+
+type GiftInfo struct {
+	XMLName   xml.Name  `xml:"GiftInfo"`
+	Sender    Sender    `xml:"Sender"`
+	Recipient Recipient `xml:"Recipient"`
+}
+
+type Notes struct {
+	XMLName  xml.Name `xml:"Notes"`
+	GiftInfo GiftInfo `xml:"GiftInfo"`
+}
+
+type PointsPurchaseInfo struct {
+	XMLName      xml.Name           `xml:"PurchaseInfo"`
+	Transactions PointsTransactions `xml:"Transactions"`
+}
+
+type PointsTransactions struct {
+	XMLName       xml.Name   `xml:"Transactions"`
+	TransactionId string     `xml:"TransactionId"`
+	Date          string     `xml:"Date"`
+	Type          string     `xml:"Type"`
+	TotalPaid     string     `xml:"TotalPaid"`
+	Currency      string     `xml:"Currency"`
+	ItemId        string     `xml:"ItemId"`
+	ItemPricing   GiftPrices `xml:"ItemPricing"`
+}
+
+type GiftPrice struct {
+	XMLName  xml.Name `xml:"Price,omitempty"`
+	Amount   string   `xml:"Amount"`
+	Currency string   `xml:"Currency"`
+}
+type GiftPrices struct {
+	ItemId      int `xml:"ItemId"`
+	Price       GiftPrice
+	Limits      Limits       `xml:"Limits"`
+	LicenseKind LicenceKinds `xml:"LicenseKind"`
 }
