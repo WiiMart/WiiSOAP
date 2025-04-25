@@ -19,41 +19,41 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-12, macos-14]
         include:
           - os: ubuntu-latest
-            ext: ""
+            display_name: "linux"
             bin_name: "WiiSOAP"
-            display_name: "linux"  # Simple name for artifacts
           - os: windows-latest
-            ext: ".exe"
-            bin_name: "WiiSOAP.exe"
             display_name: "windows"
-          - os: macos-12  # Intel Mac
-            ext: ""
-            bin_name: "WiiSOAP-macos-intel"
+            bin_name: "WiiSOAP.exe"
+          - os: macos-12
             display_name: "mac-intel"
-          - os: macos-14  # Apple Silicon
-            ext: ""
-            bin_name: "WiiSOAP-macos-arm64"
+            bin_name: "WiiSOAP-macos-intel"
+          - os: macos-14
             display_name: "mac-apple-silicon"
+            bin_name: "WiiSOAP-macos-arm64"
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v4
+      - uses: actions/setup-go@v4
         with:
           go-version: '1.23'
 
-      - name: Build
+      # Windows Build (PowerShell)
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
         run: |
-          if [ "${{ runner.os }}" == "Windows" ]; then
-            $env:GOOS="windows"
-            $env:GOARCH="amd64"
-            go build -v -o "${{ matrix.bin_name }}" ./...
-          else
-            GOOS=${{ runner.os == 'macOS' && 'darwin' || 'linux' }} \
-            GOARCH=${{ matrix.os == 'macos-14' && 'arm64' || 'amd64' }} \
-            go build -v -o "${{ matrix.bin_name }}" ./...
-          fi
+          $env:GOOS="windows"
+          $env:GOARCH="amd64"
+          go build -v -o "${{ matrix.bin_name }}" ./...
+
+      # Linux/macOS Build (Bash)
+      - name: Build (Linux/macOS)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          GOOS=${{ runner.os == 'macOS' && 'darwin' || 'linux' }} \
+          GOARCH=${{ matrix.os == 'macos-14' && 'arm64' || 'amd64' }} \
+          go build -v -o "${{ matrix.bin_name }}" ./...
 
       - name: Create release ZIP
         run: |
@@ -62,7 +62,7 @@ jobs:
           cp config.example.xml release/
           zip -r "wiisoap-${{ matrix.display_name }}.zip" release/
 
-      - name: Upload release ZIP
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: "wiisoap-${{ matrix.display_name }}"
