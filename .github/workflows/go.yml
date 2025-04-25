@@ -8,6 +8,12 @@ on:
     branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
+  workflow_dispatch:
+    inputs:
+      optional_input:
+        description: 'Only run when needed'
+        required: false
+        default: ''
 
 jobs:
 
