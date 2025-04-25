@@ -34,7 +34,7 @@ jobs:
       run: mkdir -p release && cp WiiSOAP release/ && cp config.example.xml release/ && zip -r wiisoap.zip release/
     
     - name: Upload release ZIP
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: wiisoap-linux
         path: wiisoap.zip       
