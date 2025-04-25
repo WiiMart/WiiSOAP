@@ -45,9 +45,15 @@ jobs:
 
       - name: Build
         run: |
-          GOOS=${{ runner.os == 'Windows' && 'windows' || runner.os == 'macOS' && 'darwin' || 'linux' }}
-          GOARCH=${{ matrix.os == 'macos-14' && 'arm64' || 'amd64' }}
-          go build -v -o "${{ matrix.bin_name }}" ./...
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            $env:GOOS="windows"
+            $env:GOARCH="amd64"
+            go build -v -o "${{ matrix.bin_name }}" ./...
+          else
+            GOOS=${{ runner.os == 'macOS' && 'darwin' || 'linux' }} \
+            GOARCH=${{ matrix.os == 'macos-14' && 'arm64' || 'amd64' }} \
+            go build -v -o "${{ matrix.bin_name }}" ./...
+          fi
 
       - name: Create release ZIP
         run: |
