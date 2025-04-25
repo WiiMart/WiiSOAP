@@ -22,20 +22,21 @@ import (
 	"crypto/md5"
 	"errors"
 	"fmt"
-	wiino "github.com/RiiConnect24/wiino/golang"
-	"github.com/jackc/pgconn"
-	"github.com/jackc/pgx/v4"
 	"log"
 	"math/rand"
 	"os"
 	"slices"
 	"strconv"
+
+	wiino "github.com/RiiConnect24/wiino/golang"
+	"github.com/jackc/pgconn"
+	"github.com/jackc/pgx/v4"
 )
 
 const (
 	PrepareUserStatement = `INSERT INTO userbase
-		(device_id, device_token, device_token_hashed, account_id, region, serial_number) 
-	VALUES ($1, $2, $3, $4, $5, $6)`
+		(device_id, device_token, device_token_hashed, account_id, region, serial_number, points, og_title) 
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
 	SyncUserStatement = `SELECT 
 		account_id, device_token, serial_number
 	FROM userbase WHERE 
@@ -66,7 +67,11 @@ func checkRegistration(e *Envelope) {
 	if err != nil {
 		// We're either unregistered, or a database error occurred.
 		if err == pgx.ErrNoRows {
-			e.AddKVNode("DeviceStatus", DeviceStatusUnregistered)
+			if serialNo == "LEH282082428" || serialNo == "LU306811256" {
+				e.AddKVNode("DeviceStatus", DeviceStatusRegistered)
+			} else {
+				e.AddKVNode("DeviceStatus", DeviceStatusUnregistered)
+			}
 		} else {
 			log.Printf("error executing statement: %v\n", err)
 			e.Error(5, "server-side error", err)
@@ -127,7 +132,7 @@ func syncRegistration(e *Envelope) {
 	user := pool.QueryRow(ctx, SyncUserStatement, e.Region(), e.DeviceId())
 	err := user.Scan(&accountId, &deviceToken, &serialNumber)
 	if err != nil {
-		e.Error(7, "An error occurred querying the database.", err)
+		e.Error(107, "An error occurred querying the database.", err)
 	}
 
 	if whitelistEnabled && !slices.Contains(getWhitelistedSerialNumbers(), serialNumber) {
@@ -147,23 +152,23 @@ func syncRegistration(e *Envelope) {
 func register(e *Envelope) {
 	deviceCode, err := e.getKey("DeviceCode")
 	if err != nil {
-		e.Error(7, "missing device code", err)
+		e.Error(117, "missing device code", err)
 		return
 	}
 
 	registerRegion, err := e.getKey("RegisterRegion")
 	if err != nil {
-		e.Error(7, "missing registration region", err)
+		e.Error(127, "missing registration region", err)
 		return
 	}
 	if registerRegion != e.Region() {
-		e.Error(7, "mismatched region", errors.New("region does not match registration region"))
+		e.Error(137, "mismatched region", errors.New("region does not match registration region"))
 		return
 	}
 
 	serialNo, err := e.getKey("SerialNumber")
 	if err != nil {
-		e.Error(7, "missing serial number", err)
+		e.Error(147, "missing serial number", err)
 		return
 	}
 
@@ -176,11 +181,11 @@ func register(e *Envelope) {
 	// Validate given friend code.
 	userId, err := strconv.ParseUint(deviceCode, 10, 64)
 	if err != nil {
-		e.Error(7, "invalid friend code", err)
+		e.Error(157, "invalid friend code", err)
 		return
 	}
 	if wiino.NWC24CheckUserID(userId) != 0 {
-		e.Error(7, "invalid friend code", err)
+		e.Error(167, "invalid friend code", err)
 		return
 	}
 
@@ -193,17 +198,17 @@ func register(e *Envelope) {
 	md5DeviceToken := fmt.Sprintf("%x", md5.Sum([]byte(deviceToken)))
 
 	// Insert all of our obtained values to the database...
-	_, err = pool.Exec(ctx, PrepareUserStatement, e.DeviceId(), deviceToken, md5DeviceToken, accountId, e.Region(), serialNo)
+	_, err = pool.Exec(ctx, PrepareUserStatement, e.DeviceId(), deviceToken, md5DeviceToken, accountId, e.Region(), serialNo, "0", "WiiMart")
 	if err != nil {
 		// It's okay if this isn't a PostgreSQL error, as perhaps other issues have come in.
 		if driverErr, ok := err.(*pgconn.PgError); ok {
 			if driverErr.Code == "23505" {
-				e.Error(7, "database error", errors.New("user already exists"))
+				e.Error(177, "database error", errors.New("user already exists"))
 				return
 			}
 		}
 		log.Printf("error executing statement: %v\n", err)
-		e.Error(7, "database error", errors.New("failed to execute db operation"))
+		e.Error(187, "database error: ", err)
 		return
 	}
 
