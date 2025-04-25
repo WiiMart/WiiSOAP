@@ -1,13 +1,10 @@
-# This workflow will build a golang project
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
-
-name: Go
+name: Go Cross-Platform Build
 
 on:
   push:
-    branches: [ "master" ]
+    branches: ["master"]
   pull_request:
-    branches: [ "master" ]
+    branches: ["master"]
   workflow_dispatch:
     inputs:
       optional_input:
@@ -16,25 +13,51 @@ on:
         default: ''
 
 jobs:
-
   build:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-12, macos-14]
+        include:
+          - os: ubuntu-latest
+            ext: ""
+            bin_name: "WiiSOAP"
+            display_name: "linux"  # Simple name for artifacts
+          - os: windows-latest
+            ext: ".exe"
+            bin_name: "WiiSOAP.exe"
+            display_name: "windows"
+          - os: macos-12  # Intel Mac
+            ext: ""
+            bin_name: "WiiSOAP-macos-intel"
+            display_name: "mac-intel"
+          - os: macos-14  # Apple Silicon
+            ext: ""
+            bin_name: "WiiSOAP-macos-arm64"
+            display_name: "mac-apple-silicon"
+    runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: '1.23'
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.23'
 
-    - name: Build
-      run: go build -v ./...
-      
-    - name: Create release ZIP
-      run: mkdir -p release && cp WiiSOAP release/ && cp config.example.xml release/ && zip -r wiisoap.zip release/
-    
-    - name: Upload release ZIP
-      uses: actions/upload-artifact@v4
-      with:
-        name: wiisoap-linux
-        path: wiisoap.zip       
+      - name: Build
+        run: |
+          GOOS=${{ runner.os == 'Windows' && 'windows' || runner.os == 'macOS' && 'darwin' || 'linux' }}
+          GOARCH=${{ matrix.os == 'macos-14' && 'arm64' || 'amd64' }}
+          go build -v -o "${{ matrix.bin_name }}" ./...
+
+      - name: Create release ZIP
+        run: |
+          mkdir -p release
+          cp "${{ matrix.bin_name }}" release/
+          cp config.example.xml release/
+          zip -r "wiisoap-${{ matrix.display_name }}.zip" release/
+
+      - name: Upload release ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: "wiisoap-${{ matrix.display_name }}"
+          path: "wiisoap-${{ matrix.display_name }}.zip"
